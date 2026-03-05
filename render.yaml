@@ -1,0 +1,37 @@
+services:
+  - type: web
+    name: fleet-safety-web
+    runtime: node
+    plan: starter
+    autoDeploy: true
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: DATABASE_URL
+        fromDatabase:
+          name: fleet-safety-db
+          property: connectionString
+      - key: CRON_TOKEN
+        generateValue: true
+
+  - type: cron
+    name: fleet-safety-hourly-cron
+    runtime: node
+    schedule: "0 * * * *"
+    buildCommand: npm install
+    startCommand: npm run cron:hourly
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: DATABASE_URL
+        fromDatabase:
+          name: fleet-safety-db
+          property: connectionString
+
+databases:
+  - name: fleet-safety-db
+    plan: starter
+    databaseName: fleet_safety
+    user: fleet_safety_user

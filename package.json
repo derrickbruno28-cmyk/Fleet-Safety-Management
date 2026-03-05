@@ -1,0 +1,17 @@
+{
+  "name": "fleet-safety-management-2026",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Fleet Safety UI with Samsara integration, Postgres persistence, and hourly cron",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "cron:hourly": "node scripts/hourly-cron.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "pg": "^8.12.0"
+  }
+}

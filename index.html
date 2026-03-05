@@ -1,0 +1,4441 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fleet Safety Module</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+:root {
+  --bg: #0a0e14;
+  --surface: #111827;
+  --surface2: #1a2235;
+  --border: #1e2d42;
+  --accent: #f59e0b;
+  --accent2: #3b82f6;
+  --green: #10b981;
+  --red: #ef4444;
+  --yellow: #f59e0b;
+  --text: #e2e8f0;
+  --text2: #94a3b8;
+  --mono: "IBM Plex Mono", monospace;
+  --sans: "IBM Plex Sans", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  min-height: 100vh;
+}
+
+.topbar {
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.brand h1 {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.05em;
+}
+
+.brand p {
+  margin-top: 2px;
+  font-size: 10px;
+  color: var(--text2);
+}
+
+.layout {
+  display: flex;
+  min-height: calc(100vh - 54px);
+}
+
+.sidebar {
+  width: 220px;
+  min-width: 220px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 12px 0;
+}
+
+.logo {
+  padding: 20px 16px 16px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+
+.logo h1 {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.05em;
+  line-height: 1.4;
+}
+
+.logo span {
+  font-size: 10px;
+  color: var(--text2);
+  display: block;
+  margin-top: 2px;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  border: 0;
+  border-left: 2px solid transparent;
+  background: transparent;
+  color: var(--text2);
+  padding: 10px 16px;
+  cursor: pointer;
+  font-family: var(--sans);
+  font-size: 13px;
+  text-align: left;
+  transition: all 0.15s;
+}
+
+.tab:hover {
+  background: var(--surface2);
+  color: var(--text);
+}
+
+.tab.active {
+  background: rgba(245, 158, 11, 0.08);
+  color: var(--accent);
+  border-left-color: var(--accent);
+}
+
+.content {
+  flex: 1;
+  overflow: auto;
+  padding: 14px 24px;
+}
+
+.panel {
+  display: none;
+}
+
+.panel.active {
+  display: block;
+}
+
+h2 {
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.hint {
+  color: var(--text2);
+  font-size: 11px;
+  margin-bottom: 10px;
+  font-family: var(--mono);
+}
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.kpi {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.kpi h4 {
+  color: var(--text2);
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.kpi p {
+  margin-top: 4px;
+  font-family: var(--mono);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.two-col {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.card h3 {
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.controls-card {
+  padding-bottom: 8px;
+}
+
+.controls-grid {
+  padding: 12px;
+}
+
+.inline-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.table-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.btn.mini {
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
+.cell-checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent2);
+}
+
+.empty-muted {
+  color: var(--text2);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(30, 45, 66, 0.6);
+  text-align: left;
+  font-size: 13px;
+  vertical-align: middle;
+}
+
+th {
+  background: var(--surface);
+  color: var(--text2);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: var(--mono);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pill.green {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--green);
+}
+
+.pill.yellow {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--yellow);
+}
+
+.pill.red {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--red);
+}
+
+.btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--accent);
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn:hover {
+  background: rgba(245, 158, 11, 0.2);
+}
+
+.btn.ghost {
+  border-color: var(--border);
+  background: var(--surface2);
+  color: var(--text);
+}
+
+.btn.ghost:hover {
+  background: var(--border);
+}
+
+dialog {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  max-width: 700px;
+  width: 95vw;
+}
+
+dialog::backdrop {
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+}
+
+#formContent {
+  padding: 20px 24px;
+}
+
+#formContent h3 {
+  margin-bottom: 12px;
+  font-family: var(--mono);
+  font-size: 14px;
+}
+
+.dialog-actions {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.form-row {
+  margin-bottom: 10px;
+}
+
+label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--text2);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+input,
+select {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 13px;
+  outline: none;
+}
+
+input:focus,
+select:focus {
+  border-color: var(--accent2);
+}
+
+select option {
+  background: var(--surface);
+}
+
+.note-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--text2);
+}
+
+.list-row {
+  border-bottom: 1px solid rgba(30, 45, 66, 0.6);
+  padding: 10px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+
+.section-list {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(30, 45, 66, 0.6);
+}
+
+.section-list h4 {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+
+.section-list p {
+  color: var(--text2);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.subnav {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.subtab {
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text2);
+  padding: 7px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: var(--mono);
+}
+
+.subtab.active {
+  color: var(--accent);
+  border-color: rgba(245, 158, 11, 0.45);
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.tile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
+}
+
+.tile {
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.tile-media {
+  height: 108px;
+  background: linear-gradient(120deg, #1f2b40, #162033);
+}
+
+.tile-body {
+  padding: 10px;
+}
+
+.tile-title {
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.tile-meta {
+  font-family: var(--mono);
+  color: var(--text2);
+  font-size: 11px;
+}
+
+.procedure-item {
+  border-bottom: 1px solid rgba(30, 45, 66, 0.6);
+  padding: 10px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.procedure-item:last-child {
+  border-bottom: 0;
+}
+
+.map-shell {
+  width: 100%;
+  height: 68vh;
+  min-height: 520px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+}
+
+#assetLeafletMap {
+  width: 100%;
+  height: 100%;
+}
+
+.map-ui {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 800;
+  width: 210px;
+  background: rgba(17, 24, 39, 0.94);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.map-ui h4 {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--text2);
+  margin: 6px 0;
+  text-transform: uppercase;
+}
+
+.map-ui .choice {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 5px 0;
+  font-size: 12px;
+}
+
+.map-ui input[type="radio"],
+.map-ui input[type="checkbox"] {
+  width: auto;
+}
+
+.ops-banner {
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  background: rgba(59, 130, 246, 0.1);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-top: 10px;
+  font-size: 12px;
+  color: #cfe3ff;
+}
+
+@media (max-width: 980px) {
+  .layout {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    min-width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(130px, 1fr));
+    gap: 4px;
+    padding: 8px;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .tab {
+    border-left: 0;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+  }
+
+  .tab.active {
+    border-color: rgba(245, 158, 11, 0.5);
+  }
+
+  .content {
+    padding: 12px;
+  }
+
+  .kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .two-col {
+    grid-template-columns: 1fr;
+  }
+
+  .topbar {
+    height: auto;
+    padding: 10px 12px;
+    gap: 10px;
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .logo {
+    grid-column: 1 / -1;
+    margin-bottom: 4px;
+    padding: 8px;
+  }
+}
+
+</style>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <h1>FLEET SAFETY MODULE</h1>
+        <p>Centralized safety operations dashboard</p>
+      </div>
+      <div class="topbar-actions">
+        <button id="seedDataBtn" class="btn ghost">Load Sample Data</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <aside class="sidebar">
+        <div class="logo">
+          <h1>🛡 SAFETY MGT</h1>
+          <span>Driver Safety Operations</span>
+        </div>
+        <button class="tab active" data-tab="overview">Overview</button>
+        <button class="tab" data-tab="weekly">Weekly Tasks</button>
+        <button class="tab" data-tab="discipline">Driver Discipline</button>
+        <button class="tab" data-tab="checkcalls">Check Calls</button>
+        <button class="tab" data-tab="kwentracker">Check Call Tracker</button>
+        <button class="tab" data-tab="safetyvideos">Safety Videos</button>
+        <button class="tab" data-tab="compliancechecks">Compliance Checks</button>
+        <button class="tab" data-tab="driverempathy">Driver Empathy</button>
+        <button class="tab" data-tab="traininghub">Training Hub</button>
+      </aside>
+
+      <section class="content">
+        <div class="panel tab-panel active" id="overview">
+          <h2>Overview</h2>
+          <div class="card controls-card">
+            <h3>Integrations</h3>
+            <div class="controls-grid">
+              <div class="form-row">
+                <label for="samsaraToken">Samsara API Token</label>
+                <input id="samsaraToken" type="password" placeholder="Paste token..." />
+              </div>
+              <div class="inline-actions">
+                <button id="saveSamsaraTokenBtn" class="btn">Save Token</button>
+                <button id="syncSamsaraBtn" class="btn">Sync Drivers</button>
+                <button id="importCsvBtn" class="btn ghost">Import CSV</button>
+                <button id="importCheckCallWorkbookBtn" class="btn ghost">Import Check Call Workbook</button>
+                <button id="importSafetyVideosBtn" class="btn ghost">Import Safety Videos XLSX</button>
+                <button id="importComplianceBtn" class="btn ghost">Import Compliance XLSX</button>
+                <button id="dedupeDriversBtn" class="btn ghost">Deduplicate Drivers</button>
+                <input id="csvInput" type="file" accept=".csv,text/csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" hidden />
+                <input id="checkCallWorkbookInput" type="file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" hidden />
+                <input id="safetyVideosInput" type="file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" hidden />
+                <input id="complianceInput" type="file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" hidden />
+              </div>
+            </div>
+            <p class="hint" id="syncStatus">
+              Import Check Call Tracker sheet (.xlsx/.csv). The app maps it into check calls and tracker rows.
+            </p>
+          </div>
+          <div class="kpi-grid" id="kpiGrid"></div>
+          <div class="two-col">
+            <div class="card">
+              <h3>Bottom Safety Drivers (Call Required)</h3>
+              <div id="bottomDrivers"></div>
+            </div>
+            <div class="card">
+              <h3>Need Check Call (Oldest First)</h3>
+              <div id="callPriority"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel tab-panel" id="weekly">
+          <div class="panel-header">
+            <h2>Weekly Tasks</h2>
+            <button id="addWeeklyTaskBtn" class="btn">Add Task</button>
+          </div>
+          <p class="hint">
+            Weekly tasks auto-reset every Monday based on local time.
+          </p>
+          <div class="card">
+            <table>
+              <thead>
+                <tr>
+                  <th>Done</th>
+                  <th>Task</th>
+                  <th>Owner</th>
+                  <th>Last Completed</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="weeklyTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel tab-panel" id="discipline">
+          <div class="panel-header">
+            <h2>Driver Discipline</h2>
+            <div class="inline-actions">
+              <button id="addDisciplineBtn" class="btn">Add Discipline Case</button>
+              <button id="archiveCompletedDisciplineBtn" class="btn ghost">Archive Completed</button>
+            </div>
+          </div>
+          <div class="card">
+            <table>
+              <thead>
+                <tr>
+                  <th>Driver</th>
+                  <th>Level</th>
+                  <th>Status</th>
+                  <th>Start</th>
+                  <th>End</th>
+                  <th>Days Left</th>
+                  <th>Done</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="disciplineTableBody"></tbody>
+            </table>
+          </div>
+          <div class="card" style="margin-top:10px;">
+            <h3>Discipline History</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Driver</th>
+                  <th>Level</th>
+                  <th>Status</th>
+                  <th>Start</th>
+                  <th>End</th>
+                  <th>Archived At</th>
+                  <th>Reason</th>
+                </tr>
+              </thead>
+              <tbody id="disciplineHistoryBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel tab-panel" id="checkcalls">
+          <div class="panel-header">
+            <h2>Check Calls</h2>
+            <div class="inline-actions">
+              <button id="logCheckCallBtn" class="btn">Log Check Call</button>
+              <button id="logCheckCallActivityBtn" class="btn ghost">Log Caller Activity</button>
+            </div>
+          </div>
+          <p class="hint" id="checkCallOpsStatus">Use Import Check Call Workbook to sync frequency + weekly call count.</p>
+          <div class="card" style="margin-bottom:10px;">
+            <h3>Driver Check Call Frequency</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Driver</th>
+                  <th>Last Check Call Date</th>
+                  <th>FMT/FMTM</th>
+                  <th>Days Passed</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="checkCallTableBody"></tbody>
+            </table>
+          </div>
+          <div class="card">
+            <h3>Weekly Check Call Count</h3>
+            <div class="controls-grid">
+              <div class="inline-actions">
+                <div class="form-row" style="min-width:260px;margin-bottom:0;">
+                  <label for="weeklyBatchSelect">Week</label>
+                  <select id="weeklyBatchSelect"></select>
+                </div>
+              </div>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Caller</th>
+                  <th>Mon</th>
+                  <th>Tue</th>
+                  <th>Wed</th>
+                  <th>Thu</th>
+                  <th>Fri</th>
+                  <th>Sat</th>
+                  <th>Sun</th>
+                  <th>Total</th>
+                  <th>Drivers Called (Activity Log)</th>
+                </tr>
+              </thead>
+              <tbody id="weeklyCheckCallBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel tab-panel" id="kwentracker">
+          <div class="panel-header">
+            <h2>Check Call Tracker</h2>
+          </div>
+          <div class="card">
+            <table>
+              <thead>
+                <tr>
+                  <th>Driver Name</th>
+                  <th>Last Check Call Date</th>
+                  <th>FMT/FMTM Who Executed</th>
+                  <th>Days Passed</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="kwenTrackerTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel tab-panel" id="safetyvideos">
+          <div class="panel-header">
+            <h2>Safety Initiative Videos</h2>
+            <div class="inline-actions">
+              <button id="addSafetyPendingBtn" class="btn">Add Driver</button>
+            </div>
+          </div>
+          <p class="hint" id="safetyVideosStatus">Import the NEW SAFETY INITIAVE VIDEOS workbook to populate this view.</p>
+          <div class="card" style="margin-bottom:10px;">
+            <h3>Follow Up Filters</h3>
+            <div class="controls-grid">
+              <div class="inline-actions">
+                <div class="form-row" style="min-width:160px;margin-bottom:0;">
+                  <label for="videoTeamFilter">Team</label>
+                  <select id="videoTeamFilter">
+                    <option value="all">All</option>
+                    <option value="OTR">OTR</option>
+                    <option value="AG4">AG4</option>
+                  </select>
+                </div>
+                <div class="form-row" style="min-width:190px;margin-bottom:0;">
+                  <label for="videoPendingFilter">Minimum Pending Courses</label>
+                  <select id="videoPendingFilter">
+                    <option value="0">0+</option>
+                    <option value="1">1+</option>
+                    <option value="3">3+</option>
+                    <option value="5">5+</option>
+                    <option value="7">7+</option>
+                  </select>
+                </div>
+                <div class="form-row" style="min-width:180px;margin-bottom:0;">
+                  <label for="videoHideCompleted">Hide Completed Follow Ups</label>
+                  <select id="videoHideCompleted">
+                    <option value="no">No</option>
+                    <option value="yes">Yes</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="kpi-grid" id="videoKpiGrid"></div>
+          <div class="two-col">
+            <div class="card">
+              <h3>Course Completion Audit</h3>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Group</th>
+                    <th>Course</th>
+                    <th>Completion Summary</th>
+                  </tr>
+                </thead>
+                <tbody id="videoCourseAuditBody"></tbody>
+              </table>
+            </div>
+            <div class="card">
+              <h3>Pending Course Buckets</h3>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Driver</th>
+                    <th>Team</th>
+                    <th>Pending Courses</th>
+                    <th>Email</th>
+                    <th>Called</th>
+                    <th>Last Call</th>
+                    <th>Next Follow Up</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="videoPendingBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel tab-panel" id="compliancechecks">
+          <div class="panel-header">
+            <h2>Driver Compliance Checks</h2>
+            <div class="inline-actions">
+              <button id="addComplianceCaseBtn" class="btn">Add Case</button>
+            </div>
+          </div>
+          <p class="hint" id="complianceStatus">Import Driver_Safety_Compliance_Analysis.xlsx to populate this section.</p>
+          <div class="kpi-grid" id="complianceKpiGrid"></div>
+          <div class="card" style="margin-top:10px;">
+            <h3>Executive Summary Metrics</h3>
+            <div id="complianceMetricList"></div>
+          </div>
+          <div class="two-col">
+            <div class="card">
+              <h3>All Driver Cases</h3>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Driver</th>
+                    <th>Case #</th>
+                    <th>Report Date</th>
+                    <th>Nature</th>
+                    <th>Compliance</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="complianceCaseBody"></tbody>
+              </table>
+            </div>
+            <div class="card">
+              <h3>Priority Repeat Offenders</h3>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Driver</th>
+                    <th>Total Cases</th>
+                    <th>Latest Incident</th>
+                    <th>Incident Types</th>
+                  </tr>
+                </thead>
+                <tbody id="complianceRepeatBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel tab-panel" id="driverempathy">
+          <div class="panel-header">
+            <h2>Driver Empathy & Support</h2>
+            <div class="inline-actions">
+              <button id="addEmpathyReportBtn" class="btn">Add Report</button>
+              <button id="archiveResolvedEmpathyBtn" class="btn ghost">Archive Resolved</button>
+            </div>
+          </div>
+          <div class="card">
+            <table>
+              <thead>
+                <tr>
+                  <th>Driver</th>
+                  <th>Date Reported</th>
+                  <th>Reported By</th>
+                  <th>Issue</th>
+                  <th>Manager Owner</th>
+                  <th>Status</th>
+                  <th>Solution</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="empathyActiveBody"></tbody>
+            </table>
+          </div>
+          <div class="card" style="margin-top:10px;">
+            <h3>Empathy History</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Driver</th>
+                  <th>Issue</th>
+                  <th>Solution</th>
+                  <th>Date Reported</th>
+                  <th>Date Resolved</th>
+                  <th>Archived At</th>
+                </tr>
+              </thead>
+              <tbody id="empathyHistoryBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel tab-panel" id="traininghub">
+          <div class="panel-header">
+            <h2>Training Hub</h2>
+            <div class="inline-actions">
+              <button id="addTrainingCourseBtn" class="btn">Add Course</button>
+              <button id="assignTrainingBtn" class="btn ghost">Assign Course</button>
+            </div>
+          </div>
+          <p class="hint">Samsara-style flow: Library -> Dashboard -> Training Log. Use this for discipline, coaching, and accountability loops.</p>
+          <div class="subnav">
+            <button class="subtab active" data-training-subtab="library">Library</button>
+            <button class="subtab" data-training-subtab="dashboard">Dashboard</button>
+            <button class="subtab" data-training-subtab="log">Training Log</button>
+            <button class="subtab" data-training-subtab="procedures">Procedures</button>
+          </div>
+
+          <div id="training-subtab-library" class="card">
+            <h3>Course Library</h3>
+            <div class="tile-grid" id="trainingLibraryGrid"></div>
+          </div>
+
+          <div id="training-subtab-dashboard" class="card" style="display:none;">
+            <h3>Training Dashboard (Last 90 Days)</h3>
+            <div class="kpi-grid" id="trainingDashboardKpi"></div>
+            <table style="margin-top:10px;">
+              <thead>
+                <tr>
+                  <th>Driver</th>
+                  <th>Total Assigned</th>
+                  <th>Completed</th>
+                  <th>Past Due</th>
+                  <th>Progress</th>
+                </tr>
+              </thead>
+              <tbody id="trainingDashboardTable"></tbody>
+            </table>
+          </div>
+
+          <div id="training-subtab-log" class="card" style="display:none;">
+            <h3>Assignments</h3>
+            <div class="controls-grid">
+              <div class="inline-actions">
+                <div class="form-row" style="min-width:180px;margin-bottom:0;">
+                  <label for="trainingStatusFilter">Status</label>
+                  <select id="trainingStatusFilter">
+                    <option value="all">All</option>
+                    <option value="NOT STARTED">Not Started</option>
+                    <option value="IN PROGRESS">In Progress</option>
+                    <option value="COMPLETED">Completed</option>
+                    <option value="PAST DUE">Past Due</option>
+                  </select>
+                </div>
+                <div class="form-row" style="min-width:180px;margin-bottom:0;">
+                  <label for="trainingCompanyFilter">Company</label>
+                  <select id="trainingCompanyFilter">
+                    <option value="all">All</option>
+                    <option value="AJG">AJG</option>
+                    <option value="Gomez">Gomez</option>
+                    <option value="AG4">AG4</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Driver</th>
+                  <th>Training</th>
+                  <th>Assigned</th>
+                  <th>Due Date</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="trainingLogBody"></tbody>
+            </table>
+          </div>
+
+          <div id="training-subtab-procedures" class="card" style="display:none;">
+            <h3>Weekly Training Procedures</h3>
+            <div id="trainingProcedureList"></div>
+          </div>
+        </div>
+
+      </section>
+    </main>
+
+    <dialog id="formDialog">
+      <form id="formContent" method="dialog"></form>
+    </dialog>
+
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
+    <script>
+const STORAGE_KEY = "fleet_safety_module_v1";
+const SAMSARA_TOKEN_KEY = "fleet_safety_samsara_token";
+
+const initialState = {
+  drivers: [],
+  weeklyTasks: [
+    { id: crypto.randomUUID(), name: "Send Weekly Safety Video", owner: "Safety", completed: false, lastCompletedAt: null },
+    { id: crypto.randomUUID(), name: "Review Bottom 10 Safety Scores", owner: "Safety", completed: false, lastCompletedAt: null },
+    { id: crypto.randomUUID(), name: "Call High-Risk Drivers", owner: "Safety", completed: false, lastCompletedAt: null }
+  ],
+  discipline: [],
+  disciplineHistory: [],
+  checkCalls: [],
+  checkCallOps: {
+    importedAt: null,
+    weeklyBatches: []
+  },
+  callActivity: [],
+  kwenTracker: [],
+  compliance: {
+    importedAt: null,
+    executiveMetrics: [],
+    cases: [],
+    repeatOffenders: []
+  },
+  empathy: {
+    active: [],
+    history: []
+  },
+  addendum: {
+    importedAt: null,
+    paragraphs: [],
+    acknowledgments: []
+  },
+  training: {
+    library: [
+      { id: crypto.randomUUID(), title: "Avoiding Collisions", category: "Defensive", durationMin: 18, company: "All" },
+      { id: crypto.randomUUID(), title: "Changing Lanes Safely", category: "Road Ops", durationMin: 14, company: "All" },
+      { id: crypto.randomUUID(), title: "Managing Distractions", category: "Behavior", durationMin: 16, company: "All" }
+    ],
+    assignments: [],
+    procedures: [
+      { id: crypto.randomUUID(), text: "Review overdue training assignments by company", done: false },
+      { id: crypto.randomUUID(), text: "Call drivers with 2+ past-due courses", done: false },
+      { id: crypto.randomUUID(), text: "Escalate repeat non-compliance to discipline queue", done: false },
+      { id: crypto.randomUUID(), text: "Log completed coaching actions and manager notes", done: false }
+    ]
+  },
+  assetMap: {
+    importedAt: null,
+    assets: []
+  },
+  safetyVideos: {
+    importedAt: null,
+    pending: [],
+    courseAudit: [],
+    followUps: []
+  }
+};
+
+const levelLabels = {
+  1: "Level 1 - Verbal Warning",
+  2: "Level 2 - Written Warning",
+  3: "Level 3 - Suspension"
+};
+
+const STATE_API_URL = "/api/state";
+let state = structuredClone(initialState);
+let persistStateTimer = null;
+let persistStateInFlight = false;
+let pendingServerStateWrite = false;
+const safetyVideosView = {
+  team: "all",
+  minPending: 0,
+  hideCompleted: false
+};
+let selectedWeeklyBatchIndex = 0;
+const trainingHubView = {
+  subtab: "library",
+  status: "all",
+  company: "all"
+};
+let assetLeafletMap = null;
+let assetLeafletLayer = null;
+let assetBaseLayer = null;
+let assetBaseLayerName = "default";
+let assetBaseLabelLayer = null;
+let assetTrafficLayer = null;
+let assetWeatherLayer = null;
+let assetAlertsLayer = null;
+let assetPublicAlertsGeoJson = null;
+let assetIntelData = {
+  localWeather: [],
+  publicAlerts: [],
+  operationalAlerts: [],
+  national: null,
+  updatedAt: null
+};
+initApp();
+
+async function initApp() {
+  state = loadStateLocal();
+  runWeeklyResetIfNeeded();
+  renderAll();
+  bindUI();
+  loadSavedSettings();
+  await syncStateFromServer();
+}
+
+function hydrateState(parsed) {
+  const merged = { ...structuredClone(initialState), ...(parsed || {}) };
+  merged.compliance = {
+    ...structuredClone(initialState).compliance,
+    ...((parsed && parsed.compliance) || {})
+  };
+  merged.empathy = {
+    ...structuredClone(initialState).empathy,
+    ...((parsed && parsed.empathy) || {})
+  };
+  merged.addendum = {
+    ...structuredClone(initialState).addendum,
+    ...((parsed && parsed.addendum) || {})
+  };
+  merged.training = {
+    ...structuredClone(initialState).training,
+    ...((parsed && parsed.training) || {})
+  };
+  merged.assetMap = {
+    ...structuredClone(initialState).assetMap,
+    ...((parsed && parsed.assetMap) || {})
+  };
+  merged.safetyVideos = {
+    ...structuredClone(initialState).safetyVideos,
+    ...((parsed && parsed.safetyVideos) || {})
+  };
+  merged.checkCallOps = {
+    ...structuredClone(initialState).checkCallOps,
+    ...((parsed && parsed.checkCallOps) || {})
+  };
+  if (!Array.isArray(merged.disciplineHistory)) merged.disciplineHistory = [];
+  if (!Array.isArray(merged.safetyVideos.pending)) merged.safetyVideos.pending = [];
+  if (!Array.isArray(merged.safetyVideos.courseAudit)) merged.safetyVideos.courseAudit = [];
+  if (!Array.isArray(merged.safetyVideos.followUps)) merged.safetyVideos.followUps = [];
+  if (!Array.isArray(merged.checkCallOps.weeklyBatches)) merged.checkCallOps.weeklyBatches = [];
+  if (!Array.isArray(merged.callActivity)) merged.callActivity = [];
+  if (!Array.isArray(merged.compliance.executiveMetrics)) merged.compliance.executiveMetrics = [];
+  if (!Array.isArray(merged.compliance.cases)) merged.compliance.cases = [];
+  if (!Array.isArray(merged.compliance.repeatOffenders)) merged.compliance.repeatOffenders = [];
+  if (!Array.isArray(merged.empathy.active)) merged.empathy.active = [];
+  if (!Array.isArray(merged.empathy.history)) merged.empathy.history = [];
+  if (!Array.isArray(merged.addendum.paragraphs)) merged.addendum.paragraphs = [];
+  if (!Array.isArray(merged.addendum.acknowledgments)) merged.addendum.acknowledgments = [];
+  if (!Array.isArray(merged.training.library)) merged.training.library = [];
+  if (!Array.isArray(merged.training.assignments)) merged.training.assignments = [];
+  if (!Array.isArray(merged.training.procedures)) merged.training.procedures = [];
+  if (!Array.isArray(merged.assetMap.assets)) merged.assetMap.assets = [];
+  return merged;
+}
+
+function loadStateLocal() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) return structuredClone(initialState);
+  try {
+    return hydrateState(JSON.parse(raw));
+  } catch {
+    return structuredClone(initialState);
+  }
+}
+
+async function syncStateFromServer() {
+  try {
+    const res = await fetch(STATE_API_URL, { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const payload = await res.json();
+    if (payload && payload.state && typeof payload.state === "object") {
+      state = hydrateState(payload.state);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      renderAll();
+      setSyncStatus("Loaded shared state from server.");
+    }
+  } catch (_) {
+    // local state fallback only
+  }
+}
+
+function queueServerStateSave() {
+  pendingServerStateWrite = true;
+  if (persistStateTimer) clearTimeout(persistStateTimer);
+  persistStateTimer = setTimeout(flushServerStateSave, 350);
+}
+
+async function flushServerStateSave() {
+  if (persistStateInFlight || !pendingServerStateWrite) return;
+  persistStateInFlight = true;
+  pendingServerStateWrite = false;
+  try {
+    await fetch(STATE_API_URL, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ state })
+    });
+  } catch (_) {
+    // keep local even if remote unavailable
+  } finally {
+    persistStateInFlight = false;
+    if (pendingServerStateWrite) flushServerStateSave();
+  }
+}
+
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  queueServerStateSave();
+}
+
+function bindUI() {
+  const on = (id, event, handler) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener(event, handler);
+  };
+
+  document.querySelectorAll(".tab").forEach((tab) => {
+    tab.addEventListener("click", () => switchTab(tab.dataset.tab));
+  });
+
+  on("seedDataBtn", "click", seedData);
+  on("addWeeklyTaskBtn", "click", showAddTaskDialog);
+  on("addDisciplineBtn", "click", showDisciplineDialog);
+  on("archiveCompletedDisciplineBtn", "click", archiveCompletedDiscipline);
+  on("logCheckCallBtn", "click", showCheckCallDialog);
+  on("logCheckCallActivityBtn", "click", showCheckCallActivityDialog);
+  on("addSafetyPendingBtn", "click", showAddSafetyPendingDialog);
+  on("addComplianceCaseBtn", "click", showAddComplianceCaseDialog);
+  on("addEmpathyReportBtn", "click", showAddEmpathyDialog);
+  on("archiveResolvedEmpathyBtn", "click", archiveResolvedEmpathyReports);
+  on("saveSamsaraTokenBtn", "click", saveSamsaraToken);
+  on("syncSamsaraBtn", "click", syncSamsaraDrivers);
+  on("importCsvBtn", "click", () => document.getElementById("csvInput")?.click());
+  on("importCheckCallWorkbookBtn", "click", () => document.getElementById("checkCallWorkbookInput")?.click());
+  on("importSafetyVideosBtn", "click", () => document.getElementById("safetyVideosInput")?.click());
+  on("importComplianceBtn", "click", () => document.getElementById("complianceInput")?.click());
+  on("dedupeDriversBtn", "click", dedupeDriverData);
+  on("csvInput", "change", importCsvFile);
+  on("checkCallWorkbookInput", "change", importCheckCallWorkbook);
+  on("safetyVideosInput", "change", importSafetyVideosWorkbook);
+  on("complianceInput", "change", importComplianceWorkbook);
+  on("videoTeamFilter", "change", (e) => {
+    safetyVideosView.team = e.target.value;
+    renderSafetyVideos();
+  });
+  on("videoPendingFilter", "change", (e) => {
+    safetyVideosView.minPending = Number(e.target.value || 0);
+    renderSafetyVideos();
+  });
+  on("videoHideCompleted", "change", (e) => {
+    safetyVideosView.hideCompleted = e.target.value === "yes";
+    renderSafetyVideos();
+  });
+  on("weeklyBatchSelect", "change", (e) => {
+    selectedWeeklyBatchIndex = Number(e.target.value || 0);
+    renderCheckCallsTable();
+  });
+  on("addTrainingCourseBtn", "click", showAddTrainingCourseDialog);
+  on("assignTrainingBtn", "click", showAssignTrainingDialog);
+  document.querySelectorAll("[data-training-subtab]").forEach((el) => {
+    el.addEventListener("click", () => setTrainingSubtab(el.dataset.trainingSubtab));
+  });
+  on("trainingStatusFilter", "change", (e) => {
+    trainingHubView.status = e.target.value;
+    renderTrainingHub();
+  });
+  on("trainingCompanyFilter", "change", (e) => {
+    trainingHubView.company = e.target.value;
+    renderTrainingHub();
+  });
+}
+
+function switchTab(target) {
+  document.querySelectorAll(".tab").forEach((el) => {
+    el.classList.toggle("active", el.dataset.tab === target);
+  });
+  document.querySelectorAll(".tab-panel").forEach((el) => {
+    el.classList.toggle("active", el.id === target);
+  });
+}
+
+function mondayStamp(date) {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  const monday = new Date(d.setDate(diff));
+  monday.setHours(0, 0, 0, 0);
+  return monday.toISOString().slice(0, 10);
+}
+
+function runWeeklyResetIfNeeded() {
+  const currentStamp = mondayStamp(new Date());
+  const lastReset = localStorage.getItem("fleet_safety_last_reset_monday");
+  if (lastReset === currentStamp) return;
+
+  state.weeklyTasks = state.weeklyTasks.map((task) => ({ ...task, completed: false }));
+  localStorage.setItem("fleet_safety_last_reset_monday", currentStamp);
+  saveState();
+}
+
+function daysSince(dateStr) {
+  if (!dateStr) return null;
+  const then = new Date(dateStr);
+  const now = new Date();
+  const ms = now.setHours(0, 0, 0, 0) - then.setHours(0, 0, 0, 0);
+  return Math.floor(ms / 86400000);
+}
+
+function daysUntil(dateStr) {
+  if (!dateStr) return null;
+  const then = new Date(dateStr);
+  const now = new Date();
+  const ms = then.setHours(0, 0, 0, 0) - now.setHours(0, 0, 0, 0);
+  return Math.ceil(ms / 86400000);
+}
+
+function todayYmd() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function escAttr(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function statusPill(status) {
+  const cls = status === "Active" ? "green" : status === "Probation" ? "yellow" : "red";
+  return `<span class="pill ${cls}">${status}</span>`;
+}
+
+function priorityPill(days) {
+  if (days >= 7) return `<span class="pill red">Urgent</span>`;
+  if (days >= 4) return `<span class="pill yellow">Watch</span>`;
+  return `<span class="pill green">Current</span>`;
+}
+
+function empathyStatusPill(status) {
+  const s = String(status || "").toLowerCase();
+  if (s.includes("resolved")) return `<span class="pill green">Resolved</span>`;
+  if (s.includes("escalated")) return `<span class="pill red">Escalated</span>`;
+  if (s.includes("progress")) return `<span class="pill yellow">In Progress</span>`;
+  return `<span class="pill yellow">Open</span>`;
+}
+
+function renderAll() {
+  renderKPIs();
+  renderWeeklyTable();
+  renderDisciplineTable();
+  renderCheckCallsTable();
+  renderKwenTrackerTable();
+  renderComplianceChecks();
+  renderEmpathyReports();
+  renderSafetyVideos();
+  renderTrainingHub();
+  renderOverviewLists();
+}
+
+function renderKPIs() {
+  const suspended = state.discipline.filter((d) => d.status === "Suspended" && daysUntil(d.endDate) >= 0).length;
+  const probation = state.discipline.filter((d) => d.status === "Probation").length;
+  const weeklyDone = state.weeklyTasks.filter((t) => t.completed).length;
+  const staleCalls = state.checkCalls.filter((c) => daysSince(c.lastCheckCall) >= 7).length;
+
+  const kpis = [
+    { label: "Drivers", value: state.drivers.length || state.checkCalls.length || state.discipline.length },
+    { label: "Weekly Tasks Done", value: `${weeklyDone}/${state.weeklyTasks.length}` },
+    { label: "Probation", value: probation },
+    { label: "Suspended", value: suspended },
+    { label: "Stale Calls (7+ Days)", value: staleCalls }
+  ];
+
+  const el = document.getElementById("kpiGrid");
+  el.innerHTML = kpis
+    .map((k) => `<div class="kpi"><h4>${k.label}</h4><p>${k.value}</p></div>`)
+    .join("");
+}
+
+function renderWeeklyTable() {
+  const body = document.getElementById("weeklyTableBody");
+  body.innerHTML = state.weeklyTasks
+    .map(
+      (task) => `
+      <tr>
+        <td><input type="checkbox" data-task-id="${task.id}" ${task.completed ? "checked" : ""}></td>
+        <td>${task.name}</td>
+        <td>${task.owner}</td>
+        <td>${task.lastCompletedAt || "-"}</td>
+        <td><button class="btn ghost mini" data-action="weekly-remove" data-id="${task.id}">Remove</button></td>
+      </tr>
+    `
+    )
+    .join("");
+
+  body.querySelectorAll("input[type='checkbox']").forEach((input) => {
+    input.addEventListener("change", () => {
+      const task = state.weeklyTasks.find((t) => t.id === input.dataset.taskId);
+      if (!task) return;
+      task.completed = input.checked;
+      task.lastCompletedAt = input.checked ? new Date().toISOString().slice(0, 10) : task.lastCompletedAt;
+      saveState();
+      renderAll();
+    });
+  });
+
+  body.querySelectorAll("[data-action='weekly-remove']").forEach((el) => {
+    el.addEventListener("click", () => {
+      state.weeklyTasks = state.weeklyTasks.filter((t) => t.id !== el.dataset.id);
+      saveState();
+      renderAll();
+      setSyncStatus("Weekly task removed.");
+    });
+  });
+}
+
+function renderDisciplineTable() {
+  const body = document.getElementById("disciplineTableBody");
+  const historyBody = document.getElementById("disciplineHistoryBody");
+  const rows = state.discipline
+    .slice()
+    .sort((a, b) => (daysUntil(a.endDate) ?? 9999) - (daysUntil(b.endDate) ?? 9999));
+  body.innerHTML = rows
+    .map((d) => {
+      const remaining = daysUntil(d.endDate);
+      const daysLeft = remaining === null ? "-" : remaining < 0 ? "Complete" : remaining;
+      const done = Boolean(d.completed);
+      return `
+      <tr>
+        <td>${d.driver}</td>
+        <td>${levelLabels[d.level] || "Custom"}</td>
+        <td>${statusPill(d.status)}</td>
+        <td>${d.startDate || "-"}</td>
+        <td>${d.endDate || "-"}</td>
+        <td>${daysLeft}</td>
+        <td><input type="checkbox" class="cell-checkbox" data-action="discipline-complete" data-id="${d.id}" ${done ? "checked" : ""}></td>
+        <td>
+          <div class="table-actions">
+            <button class="btn ghost mini" data-action="discipline-archive" data-id="${d.id}">Archive</button>
+            <button class="btn ghost mini" data-action="discipline-remove" data-id="${d.id}">Remove</button>
+          </div>
+        </td>
+      </tr>
+    `;
+    })
+    .join("");
+  if (!rows.length) {
+    body.innerHTML = `<tr><td colspan="8" class="empty-muted">No active discipline cases.</td></tr>`;
+  }
+
+  body.querySelectorAll("[data-action='discipline-complete']").forEach((el) => {
+    el.addEventListener("change", () => toggleDisciplineCompleted(el.dataset.id, el.checked));
+  });
+  body.querySelectorAll("[data-action='discipline-archive']").forEach((el) => {
+    el.addEventListener("click", () => archiveDisciplineCase(el.dataset.id, "Manual archive"));
+  });
+  body.querySelectorAll("[data-action='discipline-remove']").forEach((el) => {
+    el.addEventListener("click", () => removeDisciplineCase(el.dataset.id));
+  });
+
+  const historyRows = state.disciplineHistory
+    .slice()
+    .sort((a, b) => String(b.archivedAt || "").localeCompare(String(a.archivedAt || "")));
+  historyBody.innerHTML = historyRows.length
+    ? historyRows
+        .map(
+          (h) => `<tr>
+            <td>${h.driver}</td>
+            <td>${levelLabels[h.level] || "Custom"}</td>
+            <td>${statusPill(h.status)}</td>
+            <td>${h.startDate || "-"}</td>
+            <td>${h.endDate || "-"}</td>
+            <td>${h.archivedAt || "-"}</td>
+            <td>${h.archiveReason || "-"}</td>
+          </tr>`
+        )
+        .join("")
+    : `<tr><td colspan="7" class="empty-muted">No archived discipline records yet.</td></tr>`;
+}
+
+function renderCheckCallsTable() {
+  const body = document.getElementById("checkCallTableBody");
+  const weeklyBody = document.getElementById("weeklyCheckCallBody");
+  const weekSelect = document.getElementById("weeklyBatchSelect");
+  if (!body || !weeklyBody || !weekSelect) return;
+  const importedAt = state.checkCallOps?.importedAt;
+  if (importedAt) {
+    setCheckCallOpsStatus(`Last check call workbook import: ${new Date(importedAt).toLocaleString()}`);
+  }
+
+  const rows = state.kwenTracker.length
+    ? state.kwenTracker.slice()
+    : state.checkCalls.map((c) => ({
+        id: c.id,
+        driver: c.driver,
+        lastCheckCall: c.lastCheckCall,
+        executedBy: c.lastCaller || "",
+        daysPassed: daysSince(c.lastCheckCall),
+        status: (daysSince(c.lastCheckCall) ?? 0) >= 7 ? "HIGH PRIORITY" : "CURRENT"
+      }));
+
+  const sortedRows = rows
+    .slice()
+    .sort((a, b) => {
+      const aDays = Number.isFinite(a.daysPassed) ? a.daysPassed : daysSince(a.lastCheckCall) ?? -1;
+      const bDays = Number.isFinite(b.daysPassed) ? b.daysPassed : daysSince(b.lastCheckCall) ?? -1;
+      return bDays - aDays;
+    });
+
+  body.innerHTML = sortedRows
+    .map((row) => {
+      const ds = Number.isFinite(row.daysPassed) ? row.daysPassed : daysSince(row.lastCheckCall);
+      return `
+      <tr>
+        <td>${row.driver}</td>
+        <td>${row.lastCheckCall || "-"}</td>
+        <td>${row.executedBy || "-"}</td>
+        <td>${ds ?? "-"}</td>
+        <td>${trackerStatusPill(row.status || (ds === null ? "Current" : ds >= 7 ? "HIGH PRIORITY" : "Current"))}</td>
+        <td>
+          <div class="table-actions">
+            <button class="btn ghost mini" data-action="checkcall-log" data-id="${row.id}">Log Today</button>
+            <button class="btn ghost mini" data-action="checkcall-remove" data-id="${row.id}">Remove</button>
+          </div>
+        </td>
+      </tr>
+    `;
+    })
+    .join("");
+  if (!sortedRows.length) {
+    body.innerHTML = `<tr><td colspan="6" class="empty-muted">No check calls logged yet.</td></tr>`;
+  }
+
+  body.querySelectorAll("[data-action='checkcall-log']").forEach((el) => {
+    el.addEventListener("click", () => logCheckCallTodayById(el.dataset.id));
+  });
+  body.querySelectorAll("[data-action='checkcall-remove']").forEach((el) => {
+    el.addEventListener("click", () => removeCheckCallById(el.dataset.id));
+  });
+
+  const batches = Array.isArray(state.checkCallOps?.weeklyBatches) ? state.checkCallOps.weeklyBatches : [];
+  weekSelect.innerHTML = batches.length
+    ? batches
+        .map((b, i) => `<option value="${i}" ${i === selectedWeeklyBatchIndex ? "selected" : ""}>${b.label || `Week ${i + 1}`}</option>`)
+        .join("")
+    : `<option value="0">No weekly count data</option>`;
+  if (selectedWeeklyBatchIndex >= batches.length) selectedWeeklyBatchIndex = 0;
+
+  const active = batches[selectedWeeklyBatchIndex];
+  if (!active || !Array.isArray(active.agents) || !active.agents.length) {
+    weeklyBody.innerHTML = `<tr><td colspan="10" class="empty-muted">Import Check Call Workbook to load weekly call count.</td></tr>`;
+    return;
+  }
+  const weekStart = active.weekStart || "";
+  const weekEnd = active.weekEnd || "";
+  const weekCalls = (state.callActivity || []).filter((a) => {
+    if (!a.date) return false;
+    if (weekStart && a.date < weekStart) return false;
+    if (weekEnd && a.date > weekEnd) return false;
+    return true;
+  });
+
+  weeklyBody.innerHTML = active.agents
+    .slice()
+    .sort((a, b) => Number(b.total || 0) - Number(a.total || 0))
+    .map((agent) => {
+      const daily = agent.daily || [];
+      const driversCalled = [...new Set(weekCalls.filter((c) => normalizeNameKey(c.caller) === normalizeNameKey(agent.name)).map((c) => c.driver))]
+        .sort((a, b) => a.localeCompare(b));
+      return `<tr>
+        <td>${agent.name}</td>
+        <td>${daily[0] ?? "-"}</td>
+        <td>${daily[1] ?? "-"}</td>
+        <td>${daily[2] ?? "-"}</td>
+        <td>${daily[3] ?? "-"}</td>
+        <td>${daily[4] ?? "-"}</td>
+        <td>${daily[5] ?? "-"}</td>
+        <td>${daily[6] ?? "-"}</td>
+        <td><strong>${agent.total ?? "-"}</strong></td>
+        <td>${driversCalled.length ? driversCalled.map((d) => `<span class="note-chip">${d}</span>`).join(" ") : '<span class="empty-muted">No call activity logged</span>'}</td>
+      </tr>`;
+    })
+    .join("");
+}
+
+function trackerStatusPill(status) {
+  const normalized = normalizeHeader(status);
+  if (normalized.includes("high priority")) return `<span class="pill red">${status}</span>`;
+  if (normalized.includes("watch")) return `<span class="pill yellow">${status}</span>`;
+  return `<span class="pill green">${status || "Current"}</span>`;
+}
+
+function renderKwenTrackerTable() {
+  const body = document.getElementById("kwenTrackerTableBody");
+  if (!body) return;
+
+  const rows = state.kwenTracker
+    .slice()
+    .sort((a, b) => {
+      const aDays = Number.isFinite(a.daysPassed) ? a.daysPassed : daysSince(a.lastCheckCall) ?? -1;
+      const bDays = Number.isFinite(b.daysPassed) ? b.daysPassed : daysSince(b.lastCheckCall) ?? -1;
+      return bDays - aDays;
+    });
+
+  body.innerHTML = rows.length
+    ? rows
+        .map((row) => {
+          const days = Number.isFinite(row.daysPassed) ? row.daysPassed : daysSince(row.lastCheckCall);
+          return `
+      <tr>
+        <td>${row.driver}</td>
+        <td>${row.lastCheckCall || "-"}</td>
+        <td>${row.executedBy || "-"}</td>
+        <td>${days ?? "-"}</td>
+        <td>${trackerStatusPill(row.status || "Current")}</td>
+        <td>
+          <div class="table-actions">
+            <button class="btn ghost mini" data-action="tracker-log" data-id="${row.id}">Log Call</button>
+            <button class="btn ghost mini" data-action="tracker-remove" data-id="${row.id}">Remove</button>
+          </div>
+        </td>
+      </tr>
+    `;
+        })
+        .join("")
+    : `<tr><td colspan="6">No tracker rows imported yet.</td></tr>`;
+
+  body.querySelectorAll("[data-action='tracker-log']").forEach((el) => {
+    el.addEventListener("click", () => logTrackerCallById(el.dataset.id));
+  });
+  body.querySelectorAll("[data-action='tracker-remove']").forEach((el) => {
+    el.addEventListener("click", () => removeTrackerRowById(el.dataset.id));
+  });
+}
+
+function setComplianceStatus(message) {
+  const el = document.getElementById("complianceStatus");
+  if (el) el.textContent = message;
+}
+
+function renderComplianceChecks() {
+  const kpiEl = document.getElementById("complianceKpiGrid");
+  const caseBody = document.getElementById("complianceCaseBody");
+  const repeatBody = document.getElementById("complianceRepeatBody");
+  const metricList = document.getElementById("complianceMetricList");
+  if (!kpiEl || !caseBody || !repeatBody || !metricList) return;
+
+  const cases = Array.isArray(state.compliance?.cases) ? state.compliance.cases : [];
+  const repeat = Array.isArray(state.compliance?.repeatOffenders) ? state.compliance.repeatOffenders : [];
+  const metrics = Array.isArray(state.compliance?.executiveMetrics) ? state.compliance.executiveMetrics : [];
+  const importedAtText = state.compliance?.importedAt ? new Date(state.compliance.importedAt).toLocaleString() : "Not imported yet";
+  setComplianceStatus(`Source: Driver_Safety_Compliance_Analysis.xlsx. Last import: ${importedAtText}`);
+
+  const openCases = cases.filter((c) => !c.completed).length;
+  const completedCases = cases.filter((c) => c.completed).length;
+  const highPriority = repeat.length;
+  const kpis = [
+    { label: "Total Cases", value: cases.length },
+    { label: "Open Cases", value: openCases },
+    { label: "Completed Cases", value: completedCases },
+    { label: "Repeat Offenders", value: highPriority },
+    { label: "Follow Up Required", value: cases.filter((c) => c.needsFollowUp).length }
+  ];
+  kpiEl.innerHTML = kpis.map((k) => `<div class="kpi"><h4>${k.label}</h4><p>${k.value}</p></div>`).join("");
+  metricList.innerHTML = metrics.length
+    ? metrics.map((m) => `<div class="list-row"><span>${m.label}</span><strong>${m.value}</strong></div>`).join("")
+    : `<div class="list-row"><span class="empty-muted">No executive summary metrics imported.</span><strong>-</strong></div>`;
+
+  caseBody.innerHTML = cases.length
+    ? cases
+        .slice()
+        .sort((a, b) => String(b.reportDate || "").localeCompare(String(a.reportDate || "")))
+        .map((c) => {
+          const complianceDone = c.completed ? `<span class="pill green">Complete</span>` : `<span class="pill yellow">Pending</span>`;
+          return `<tr>
+            <td>${c.driver || "-"}</td>
+            <td>${c.caseNo || "-"}</td>
+            <td>${c.reportDate || "-"}</td>
+            <td>${c.nature || "-"}</td>
+            <td>${complianceDone}</td>
+            <td>
+              <div class="table-actions">
+                <input type="checkbox" class="cell-checkbox" data-action="compliance-done" data-id="${c.id}" ${c.completed ? "checked" : ""} title="Mark complete">
+                <button class="btn ghost mini" data-action="compliance-checkcall" data-id="${c.id}">Log Check Call</button>
+                <button class="btn ghost mini" data-action="compliance-remove" data-id="${c.id}">Remove</button>
+              </div>
+            </td>
+          </tr>`;
+        })
+        .join("")
+    : `<tr><td colspan="6" class="empty-muted">No compliance cases loaded.</td></tr>`;
+
+  repeatBody.innerHTML = repeat.length
+    ? repeat
+        .map(
+          (r) => `<tr>
+            <td>${r.driver || "-"}</td>
+            <td>${r.totalCases || "-"}</td>
+            <td>${r.latestIncident || "-"}</td>
+            <td>${r.incidentTypes || "-"}</td>
+          </tr>`
+        )
+        .join("")
+    : `<tr><td colspan="4" class="empty-muted">No repeat offender records.</td></tr>`;
+
+  caseBody.querySelectorAll("[data-action='compliance-done']").forEach((el) => {
+    el.addEventListener("change", () => toggleComplianceCaseCompleted(el.dataset.id, el.checked));
+  });
+  caseBody.querySelectorAll("[data-action='compliance-checkcall']").forEach((el) => {
+    el.addEventListener("click", () => logComplianceCaseCheckCall(el.dataset.id));
+  });
+  caseBody.querySelectorAll("[data-action='compliance-remove']").forEach((el) => {
+    el.addEventListener("click", () => removeComplianceCase(el.dataset.id));
+  });
+}
+
+function renderEmpathyReports() {
+  const activeBody = document.getElementById("empathyActiveBody");
+  const historyBody = document.getElementById("empathyHistoryBody");
+  if (!activeBody || !historyBody) return;
+
+  const active = Array.isArray(state.empathy?.active) ? state.empathy.active : [];
+  const history = Array.isArray(state.empathy?.history) ? state.empathy.history : [];
+  activeBody.innerHTML = active.length
+    ? active
+        .slice()
+        .sort((a, b) => String(b.dateReported || "").localeCompare(String(a.dateReported || "")))
+        .map(
+          (r) => `<tr>
+            <td>${r.driver || "-"}</td>
+            <td>${r.dateReported || "-"}</td>
+            <td>${r.reportedBy || "-"}</td>
+            <td>${r.issue || "-"}</td>
+            <td>${r.managerOwner || "-"}</td>
+            <td>${empathyStatusPill(r.status || "Open")}</td>
+            <td>${r.solution || "-"}</td>
+            <td>
+              <div class="table-actions">
+                <button class="btn ghost mini" data-action="empathy-edit" data-id="${r.id}">Update</button>
+                <button class="btn ghost mini" data-action="empathy-resolve" data-id="${r.id}">Resolve</button>
+                <button class="btn ghost mini" data-action="empathy-remove" data-id="${r.id}">Remove</button>
+              </div>
+            </td>
+          </tr>`
+        )
+        .join("")
+    : `<tr><td colspan="8" class="empty-muted">No empathy reports yet.</td></tr>`;
+
+  historyBody.innerHTML = history.length
+    ? history
+        .slice()
+        .sort((a, b) => String(b.archivedAt || "").localeCompare(String(a.archivedAt || "")))
+        .map(
+          (h) => `<tr>
+            <td>${h.driver || "-"}</td>
+            <td>${h.issue || "-"}</td>
+            <td>${h.solution || "-"}</td>
+            <td>${h.dateReported || "-"}</td>
+            <td>${h.dateResolved || "-"}</td>
+            <td>${h.archivedAt || "-"}</td>
+          </tr>`
+        )
+        .join("")
+    : `<tr><td colspan="6" class="empty-muted">No empathy history yet.</td></tr>`;
+
+  activeBody.querySelectorAll("[data-action='empathy-edit']").forEach((el) => {
+    el.addEventListener("click", () => showEditEmpathyDialog(el.dataset.id));
+  });
+  activeBody.querySelectorAll("[data-action='empathy-resolve']").forEach((el) => {
+    el.addEventListener("click", () => resolveEmpathyReport(el.dataset.id));
+  });
+  activeBody.querySelectorAll("[data-action='empathy-remove']").forEach((el) => {
+    el.addEventListener("click", () => removeEmpathyReport(el.dataset.id));
+  });
+}
+
+function setAddendumStatus(message) {
+  const el = document.getElementById("addendumStatus");
+  if (el) el.textContent = message;
+}
+
+function extractAddendumSections(paragraphs) {
+  const sections = [];
+  paragraphs.forEach((p) => {
+    const text = String(p || "").trim();
+    if (!text) return;
+    const headingMatch = text.match(/^([A-Z]\.|\b[A-Z][0-9]\.|\b[A-Z]\d\b|Step\b|Report Section\b)/);
+    if (headingMatch || /^([A-Z][A-Za-z\s&/,-]{5,80})$/.test(text)) {
+      sections.push({ title: text, body: "" });
+    } else if (sections.length) {
+      const current = sections[sections.length - 1];
+      if (current.body.length < 380) {
+        current.body += (current.body ? " " : "") + text;
+      }
+    }
+  });
+  return sections.slice(0, 20);
+}
+
+function renderAddendumSection() {
+  const kpiEl = document.getElementById("addendumKpiGrid");
+  const sectionsEl = document.getElementById("addendumSections");
+  const ackBody = document.getElementById("addendumAckBody");
+  if (!kpiEl || !sectionsEl || !ackBody) return;
+
+  const paragraphs = Array.isArray(state.addendum?.paragraphs) ? state.addendum.paragraphs : [];
+  const acks = Array.isArray(state.addendum?.acknowledgments) ? state.addendum.acknowledgments : [];
+  const sections = extractAddendumSections(paragraphs);
+  const importedAtText = state.addendum?.importedAt ? new Date(state.addendum.importedAt).toLocaleString() : "Not imported yet";
+  setAddendumStatus(`Source: Fleet_Safety_Addendum.docx. Last import: ${importedAtText}`);
+
+  const kpis = [
+    { label: "Paragraphs Loaded", value: paragraphs.length },
+    { label: "Sections Parsed", value: sections.length },
+    { label: "Acknowledgments", value: acks.length },
+    { label: "Pending Acks", value: Math.max(0, state.drivers.length - acks.length) }
+  ];
+  kpiEl.innerHTML = kpis.map((k) => `<div class="kpi"><h4>${k.label}</h4><p>${k.value}</p></div>`).join("");
+
+  sectionsEl.innerHTML = sections.length
+    ? sections
+        .map((s) => `<div class="section-list"><h4>${s.title}</h4><p>${s.body || "Policy section content loaded."}</p></div>`)
+        .join("")
+    : `<div class="section-list"><p class="empty-muted">No addendum sections loaded.</p></div>`;
+
+  ackBody.innerHTML = acks.length
+    ? acks
+        .slice()
+        .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")))
+        .map(
+          (a) => `<tr>
+            <td>${a.name || "-"}</td>
+            <td>${a.role || "-"}</td>
+            <td>${a.date || "-"}</td>
+            <td>${a.notes || "-"}</td>
+            <td><button class="btn ghost mini" data-action="ack-remove" data-id="${a.id}">Remove</button></td>
+          </tr>`
+        )
+        .join("")
+    : `<tr><td colspan="5" class="empty-muted">No acknowledgments recorded.</td></tr>`;
+
+  ackBody.querySelectorAll("[data-action='ack-remove']").forEach((el) => {
+    el.addEventListener("click", () => removeAddendumAck(el.dataset.id));
+  });
+}
+
+function setSafetyVideosStatus(message) {
+  const el = document.getElementById("safetyVideosStatus");
+  if (el) el.textContent = message;
+}
+
+function renderSafetyVideos() {
+  const pending = Array.isArray(state.safetyVideos?.pending) ? state.safetyVideos.pending : [];
+  const audit = Array.isArray(state.safetyVideos?.courseAudit) ? state.safetyVideos.courseAudit : [];
+  if (!Array.isArray(state.safetyVideos?.followUps)) state.safetyVideos.followUps = [];
+  const kpiEl = document.getElementById("videoKpiGrid");
+  const pendingBody = document.getElementById("videoPendingBody");
+  const auditBody = document.getElementById("videoCourseAuditBody");
+  if (!kpiEl || !pendingBody || !auditBody) return;
+
+  const importedAtText = state.safetyVideos?.importedAt
+    ? new Date(state.safetyVideos.importedAt).toLocaleString()
+    : "Not imported yet";
+  setSafetyVideosStatus(`Source: NEW SAFETY INITIAVE VIDEOS workbook. Last import: ${importedAtText}`);
+
+  const otrPending = pending.filter((p) => p.team === "OTR").length;
+  const ag4Pending = pending.filter((p) => p.team === "AG4").length;
+  const highBacklog = pending.filter((p) => Number(p.pendingCourses) >= 6).length;
+  const calledDone = state.safetyVideos.followUps.filter((f) => f.called).length;
+  const kpis = [
+    { label: "Pending Drivers", value: pending.length },
+    { label: "OTR Pending", value: otrPending },
+    { label: "AG4 Pending", value: ag4Pending },
+    { label: "High Backlog (6+)", value: highBacklog },
+    { label: "Course Audits", value: audit.length },
+    { label: "Follow Ups Called", value: calledDone }
+  ];
+  kpiEl.innerHTML = kpis.map((k) => `<div class="kpi"><h4>${k.label}</h4><p>${k.value}</p></div>`).join("");
+
+  const filteredPending = pending
+    .filter((p) => (safetyVideosView.team === "all" ? true : p.team === safetyVideosView.team))
+    .filter((p) => Number(p.pendingCourses) >= safetyVideosView.minPending)
+    .filter((p) => {
+      if (!safetyVideosView.hideCompleted) return true;
+      const fu = getSafetyFollowUp(p, false);
+      return !fu || !fu.called;
+    });
+
+  pendingBody.innerHTML = filteredPending.length
+    ? filteredPending
+        .slice()
+        .sort((a, b) => Number(b.pendingCourses) - Number(a.pendingCourses) || String(a.driver).localeCompare(String(b.driver)))
+        .map((r) => {
+          const fu = getSafetyFollowUp(r, true);
+          return `<tr>
+            <td>${r.driver}</td>
+            <td>${r.team}</td>
+            <td><span class="pill ${Number(r.pendingCourses) >= 6 ? "red" : Number(r.pendingCourses) >= 4 ? "yellow" : "green"}">${r.pendingCourses}</span></td>
+            <td>${r.email || "-"}</td>
+            <td><input type="checkbox" class="cell-checkbox" data-action="video-called" data-key="${fu.key}" ${fu.called ? "checked" : ""}></td>
+            <td>${fu.lastCalled || "-"}</td>
+            <td><input type="date" value="${fu.nextFollowUp || ""}" data-action="video-next" data-key="${fu.key}"></td>
+            <td>
+              <div class="table-actions">
+                <button class="btn ghost mini" data-action="video-log-call" data-key="${fu.key}">Log Call</button>
+                <button class="btn ghost mini" data-action="video-remove-driver" data-key="${fu.key}">Remove</button>
+              </div>
+            </td>
+          </tr>`;
+        })
+        .join("")
+    : `<tr><td colspan="8">No pending drivers match the current filters.</td></tr>`;
+
+  auditBody.innerHTML = audit.length
+    ? audit
+        .map(
+          (r) => `<tr>
+            <td>${r.team}</td>
+            <td>${r.course}</td>
+            <td>${r.summary || "-"}</td>
+          </tr>`
+        )
+        .join("")
+    : `<tr><td colspan="3">No completion audit rows imported.</td></tr>`;
+
+  pendingBody.querySelectorAll("[data-action='video-called']").forEach((el) => {
+    el.addEventListener("change", () => toggleSafetyVideoCalled(el.dataset.key, el.checked));
+  });
+  pendingBody.querySelectorAll("[data-action='video-next']").forEach((el) => {
+    el.addEventListener("change", () => updateSafetyVideoNextFollowUp(el.dataset.key, el.value));
+  });
+  pendingBody.querySelectorAll("[data-action='video-log-call']").forEach((el) => {
+    el.addEventListener("click", () => logSafetyVideoCall(el.dataset.key));
+  });
+  pendingBody.querySelectorAll("[data-action='video-remove-driver']").forEach((el) => {
+    el.addEventListener("click", () => removeSafetyVideoPendingDriver(el.dataset.key));
+  });
+}
+
+function setTrainingSubtab(subtab) {
+  trainingHubView.subtab = subtab || "library";
+  renderTrainingHub();
+}
+
+function trainingStatusPill(status) {
+  const s = String(status || "").toUpperCase();
+  if (s === "COMPLETED") return `<span class="pill green">Completed</span>`;
+  if (s === "PAST DUE") return `<span class="pill red">Past Due</span>`;
+  if (s === "IN PROGRESS") return `<span class="pill yellow">In Progress</span>`;
+  return `<span class="pill yellow">Not Started</span>`;
+}
+
+function deriveTrainingAssignmentStatus(a) {
+  const explicit = String(a.status || "").toUpperCase();
+  if (explicit === "COMPLETED" || explicit === "IN PROGRESS" || explicit === "NOT STARTED") return explicit;
+  const due = normalizeDateInput(a.dueDate);
+  if (due && new Date(due) < new Date(todayYmd())) return "PAST DUE";
+  return "NOT STARTED";
+}
+
+function renderTrainingHub() {
+  const tab = trainingHubView.subtab || "library";
+  document.querySelectorAll("[data-training-subtab]").forEach((el) => {
+    el.classList.toggle("active", el.dataset.trainingSubtab === tab);
+  });
+  ["library", "dashboard", "log", "procedures"].forEach((id) => {
+    const panel = document.getElementById(`training-subtab-${id}`);
+    if (panel) panel.style.display = id === tab ? "" : "none";
+  });
+  renderTrainingLibrary();
+  renderTrainingDashboard();
+  renderTrainingLog();
+  renderTrainingProcedures();
+}
+
+function renderTrainingLibrary() {
+  const grid = document.getElementById("trainingLibraryGrid");
+  if (!grid) return;
+  const courses = Array.isArray(state.training?.library) ? state.training.library : [];
+  if (!courses.length) {
+    grid.innerHTML = `<div class="empty-muted">No courses in library.</div>`;
+    return;
+  }
+  grid.innerHTML = courses
+    .map(
+      (c) => `<div class="tile">
+        <div class="tile-media"></div>
+        <div class="tile-body">
+          <div class="tile-title">${c.title || "-"}</div>
+          <div class="tile-meta">${c.category || "-"} • ${c.durationMin || 0}m • ${c.company || "All"}</div>
+          <div class="inline-actions" style="margin-top:8px;">
+            <button class="btn ghost mini" data-action="training-assign-course" data-id="${c.id}">Assign</button>
+            <button class="btn ghost mini" data-action="training-remove-course" data-id="${c.id}">Remove</button>
+          </div>
+        </div>
+      </div>`
+    )
+    .join("");
+  grid.querySelectorAll("[data-action='training-assign-course']").forEach((el) => {
+    el.addEventListener("click", () => showAssignTrainingDialog(el.dataset.id));
+  });
+  grid.querySelectorAll("[data-action='training-remove-course']").forEach((el) => {
+    el.addEventListener("click", () => removeTrainingCourse(el.dataset.id));
+  });
+}
+
+function renderTrainingDashboard() {
+  const kpi = document.getElementById("trainingDashboardKpi");
+  const table = document.getElementById("trainingDashboardTable");
+  if (!kpi || !table) return;
+  const assignments = Array.isArray(state.training?.assignments) ? state.training.assignments : [];
+  const normalized = assignments.map((a) => ({ ...a, derivedStatus: deriveTrainingAssignmentStatus(a) }));
+  const completed = normalized.filter((a) => a.derivedStatus === "COMPLETED").length;
+  const pastDue = normalized.filter((a) => a.derivedStatus === "PAST DUE").length;
+  const total = normalized.length;
+  const completionPct = total ? Math.round((completed / total) * 100) : 0;
+  const pastDuePct = total ? Math.round((pastDue / total) * 100) : 0;
+  kpi.innerHTML = [
+    { label: "Assignments", value: total },
+    { label: "Completed", value: `${completed} (${completionPct}%)` },
+    { label: "Past Due", value: `${pastDue} (${pastDuePct}%)` },
+    { label: "Drivers With Assignments", value: new Set(normalized.map((a) => normalizeNameKey(a.driver))).size }
+  ]
+    .map((row) => `<div class="kpi"><h4>${row.label}</h4><p>${row.value}</p></div>`)
+    .join("");
+
+  const perDriver = new Map();
+  normalized.forEach((a) => {
+    const key = normalizeNameKey(a.driver);
+    if (!key) return;
+    if (!perDriver.has(key)) perDriver.set(key, { driver: a.driver, total: 0, completed: 0, pastDue: 0 });
+    const d = perDriver.get(key);
+    d.total += 1;
+    if (a.derivedStatus === "COMPLETED") d.completed += 1;
+    if (a.derivedStatus === "PAST DUE") d.pastDue += 1;
+  });
+  const rows = [...perDriver.values()].sort((a, b) => b.pastDue - a.pastDue || a.driver.localeCompare(b.driver));
+  table.innerHTML = rows.length
+    ? rows
+        .map((r) => {
+          const pct = r.total ? Math.round((r.completed / r.total) * 100) : 0;
+          return `<tr>
+            <td>${r.driver}</td>
+            <td>${r.total}</td>
+            <td>${r.completed}</td>
+            <td>${r.pastDue}</td>
+            <td>${pct}%</td>
+          </tr>`;
+        })
+        .join("")
+    : `<tr><td colspan="5" class="empty-muted">No assignments yet.</td></tr>`;
+}
+
+function renderTrainingLog() {
+  const body = document.getElementById("trainingLogBody");
+  if (!body) return;
+  const statusFilter = trainingHubView.status || "all";
+  const companyFilter = trainingHubView.company || "all";
+  const assignments = (Array.isArray(state.training?.assignments) ? state.training.assignments : [])
+    .map((a) => ({ ...a, derivedStatus: deriveTrainingAssignmentStatus(a) }))
+    .filter((a) => (statusFilter === "all" ? true : a.derivedStatus === statusFilter))
+    .filter((a) => (companyFilter === "all" ? true : String(a.company || "").toUpperCase() === companyFilter.toUpperCase()))
+    .sort((a, b) => String(a.dueDate || "").localeCompare(String(b.dueDate || "")));
+
+  body.innerHTML = assignments.length
+    ? assignments
+        .map(
+          (a) => `<tr>
+            <td>${a.driver || "-"}</td>
+            <td>${a.courseTitle || "-"}</td>
+            <td>${a.assignedDate || "-"}</td>
+            <td>${a.dueDate || "-"}</td>
+            <td>${trainingStatusPill(a.derivedStatus)}</td>
+            <td>
+              <div class="table-actions">
+                <button class="btn ghost mini" data-action="training-mark-progress" data-id="${a.id}">In Progress</button>
+                <button class="btn ghost mini" data-action="training-mark-complete" data-id="${a.id}">Complete</button>
+                <button class="btn ghost mini" data-action="training-remove-assignment" data-id="${a.id}">Remove</button>
+              </div>
+            </td>
+          </tr>`
+        )
+        .join("")
+    : `<tr><td colspan="6" class="empty-muted">No assignments for current filters.</td></tr>`;
+
+  body.querySelectorAll("[data-action='training-mark-progress']").forEach((el) => {
+    el.addEventListener("click", () => setTrainingAssignmentStatus(el.dataset.id, "IN PROGRESS"));
+  });
+  body.querySelectorAll("[data-action='training-mark-complete']").forEach((el) => {
+    el.addEventListener("click", () => setTrainingAssignmentStatus(el.dataset.id, "COMPLETED"));
+  });
+  body.querySelectorAll("[data-action='training-remove-assignment']").forEach((el) => {
+    el.addEventListener("click", () => removeTrainingAssignment(el.dataset.id));
+  });
+}
+
+function renderTrainingProcedures() {
+  const list = document.getElementById("trainingProcedureList");
+  if (!list) return;
+  const procedures = Array.isArray(state.training?.procedures) ? state.training.procedures : [];
+  list.innerHTML = procedures.length
+    ? procedures
+        .map(
+          (p) => `<div class="procedure-item">
+            <span>${p.text}</span>
+            <input type="checkbox" class="cell-checkbox" data-action="training-procedure-toggle" data-id="${p.id}" ${p.done ? "checked" : ""}>
+          </div>`
+        )
+        .join("")
+    : `<div class="list-row"><span class="empty-muted">No procedure tasks configured.</span><strong>-</strong></div>`;
+  list.querySelectorAll("[data-action='training-procedure-toggle']").forEach((el) => {
+    el.addEventListener("change", () => toggleTrainingProcedure(el.dataset.id, el.checked));
+  });
+}
+
+function showAddTrainingCourseDialog() {
+  openDialog({
+    title: "Add Training Course",
+    fields: [
+      { id: "title", label: "Course Title", type: "text", required: true },
+      { id: "category", label: "Category", type: "text", required: true },
+      { id: "durationMin", label: "Duration (min)", type: "number", required: true },
+      { id: "company", label: "Company", type: "select", options: ["All", "AJG", "Gomez", "AG4"], required: true }
+    ],
+    onSubmit(values) {
+      state.training.library.push({
+        id: crypto.randomUUID(),
+        title: values.title,
+        category: values.category,
+        durationMin: Number(values.durationMin || 0),
+        company: values.company || "All"
+      });
+      saveState();
+      renderAll();
+      setSyncStatus(`Training course added: ${values.title}.`);
+    }
+  });
+}
+
+function showAssignTrainingDialog(prefilledCourseId = "") {
+  if (!Array.isArray(state.training?.library) || !state.training.library.length) {
+    setSyncStatus("Add at least one training course before assigning.");
+    return;
+  }
+  const options = (state.training.library || []).map((c) => c.id);
+  const labels = (state.training.library || []).reduce((acc, c) => {
+    acc[c.id] = `${c.title} (${c.company || "All"})`;
+    return acc;
+  }, {});
+  const courseOpts = options;
+  openDialog({
+    title: "Assign Training",
+    fields: [
+      { id: "driver", label: "Driver", type: "text", required: true },
+      { id: "company", label: "Company", type: "select", options: ["AJG", "Gomez", "AG4"], required: true },
+      { id: "courseId", label: "Course", type: "select", options: courseOpts, required: true, value: prefilledCourseId || courseOpts[0] },
+      { id: "dueDate", label: "Due Date", type: "date", required: true }
+    ],
+    onSubmit(values) {
+      const course = (state.training.library || []).find((c) => c.id === values.courseId);
+      if (!course) {
+        setSyncStatus("Assignment failed: choose a valid course.");
+        return;
+      }
+      state.training.assignments.push({
+        id: crypto.randomUUID(),
+        driver: values.driver,
+        company: values.company,
+        courseId: course.id,
+        courseTitle: course.title,
+        assignedDate: todayYmd(),
+        dueDate: values.dueDate,
+        status: "NOT STARTED"
+      });
+      upsertDriver(values.driver, null);
+      saveState();
+      renderAll();
+      setSyncStatus(`Assigned ${course.title} to ${values.driver}.`);
+    }
+  });
+  const sel = document.getElementById("courseId");
+  if (sel) {
+    [...sel.options].forEach((opt) => {
+      opt.textContent = labels[opt.value] || opt.value || "No Course";
+    });
+  }
+}
+
+function setTrainingAssignmentStatus(id, status) {
+  const rec = (state.training.assignments || []).find((a) => a.id === id);
+  if (!rec) return;
+  rec.status = status;
+  if (status === "COMPLETED") rec.completedAt = todayYmd();
+  saveState();
+  renderAll();
+}
+
+function removeTrainingAssignment(id) {
+  state.training.assignments = (state.training.assignments || []).filter((a) => a.id !== id);
+  saveState();
+  renderAll();
+}
+
+function removeTrainingCourse(id) {
+  const course = (state.training.library || []).find((c) => c.id === id);
+  state.training.library = (state.training.library || []).filter((c) => c.id !== id);
+  state.training.assignments = (state.training.assignments || []).filter((a) => a.courseId !== id);
+  saveState();
+  renderAll();
+  if (course) setSyncStatus(`Removed course ${course.title} and related assignments.`);
+}
+
+function toggleTrainingProcedure(id, done) {
+  const rec = (state.training.procedures || []).find((p) => p.id === id);
+  if (!rec) return;
+  rec.done = done;
+  saveState();
+}
+
+function setAssetMapStatus(message) {
+  const el = document.getElementById("assetMapStatus");
+  if (el) el.textContent = message;
+}
+
+function saveMultiSamsaraTokens() {
+  localStorage.setItem("fleet_safety_samsara_token_a", (document.getElementById("samsaraTokenA")?.value || "").trim());
+  localStorage.setItem("fleet_safety_samsara_token_b", (document.getElementById("samsaraTokenB")?.value || "").trim());
+  localStorage.setItem("fleet_safety_samsara_token_c", (document.getElementById("samsaraTokenC")?.value || "").trim());
+  setAssetMapStatus("Account tokens saved for multi-company asset sync.");
+}
+
+function renderAssetMap() {
+  const body = document.getElementById("assetFeedBody");
+  if (!body) return;
+  const assets = Array.isArray(state.assetMap?.assets) ? state.assetMap.assets : [];
+  body.innerHTML = assets.length
+    ? assets
+        .slice()
+        .sort((a, b) => String(a.company).localeCompare(String(b.company)) || String(a.unitNumber).localeCompare(String(b.unitNumber)))
+        .map(
+          (a) => `<tr>
+            <td>${a.company || "-"}</td>
+            <td>${a.assetType || "-"}</td>
+            <td>${a.unitNumber || "-"}</td>
+            <td>${a.trailerNumber || "-"}</td>
+            <td>${a.lastSeen || "-"}</td>
+          </tr>`
+        )
+        .join("")
+    : `<tr><td colspan="5" class="empty-muted">No assets synced yet.</td></tr>`;
+  renderAssetMapMarkers(assets);
+  renderAssetIntel();
+}
+
+function renderAssetMapMarkers(assets) {
+  const holder = document.getElementById("assetLeafletMap");
+  if (!holder || typeof L === "undefined") return;
+  const mapPanel = document.getElementById("assetmap");
+  const panelVisible = mapPanel && mapPanel.classList.contains("active");
+  if (!panelVisible) return;
+  if (!assetLeafletMap) {
+    assetLeafletMap = L.map(holder, { zoomControl: true }).setView([31.0, -97.0], 5);
+    setAssetBaseLayer(assetBaseLayerName || "default", true);
+  }
+  if (assetLeafletLayer) assetLeafletLayer.clearLayers();
+  assetLeafletLayer = L.layerGroup().addTo(assetLeafletMap);
+  const markers = (assets || []).filter((a) => Number.isFinite(Number(a.lat)) && Number.isFinite(Number(a.lng)));
+  markers.forEach((a) => {
+    const label = `${a.assetType || "Asset"} ${a.unitNumber || ""}${a.trailerNumber ? ` / ${a.trailerNumber}` : ""}`.trim();
+    L.marker([Number(a.lat), Number(a.lng)]).bindPopup(`<strong>${a.company || "-"}</strong><br>${label}`).addTo(assetLeafletLayer);
+  });
+  if (markers.length) {
+    const bounds = L.latLngBounds(markers.map((m) => [Number(m.lat), Number(m.lng)]));
+    assetLeafletMap.fitBounds(bounds, { padding: [18, 18] });
+  } else {
+    assetLeafletMap.setView([31.0, -97.0], 5);
+  }
+  updateAssetMapOverlays();
+}
+
+function setAssetBaseLayer(baseName, silent = false) {
+  assetBaseLayerName = baseName || "default";
+  if (!assetLeafletMap || typeof L === "undefined") return;
+  if (assetBaseLayer) {
+    assetLeafletMap.removeLayer(assetBaseLayer);
+    assetBaseLayer = null;
+  }
+  if (assetBaseLabelLayer) {
+    assetLeafletMap.removeLayer(assetBaseLabelLayer);
+    assetBaseLabelLayer = null;
+  }
+  const layers = {
+    default: L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap contributors"
+    }),
+    terrain: L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", {
+      maxZoom: 17,
+      attribution: "Map data: &copy; OpenStreetMap contributors, SRTM"
+    }),
+    satellite: L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+      maxZoom: 19,
+      attribution: "Tiles &copy; Esri"
+    })
+  };
+  assetBaseLayer = layers[assetBaseLayerName] || layers.default;
+  assetBaseLayer.addTo(assetLeafletMap);
+  if (assetBaseLayerName === "satellite") {
+    assetBaseLabelLayer = L.tileLayer("https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png", {
+      maxZoom: 20,
+      attribution: "&copy; OpenStreetMap &copy; CARTO"
+    });
+    assetBaseLabelLayer.addTo(assetLeafletMap);
+  }
+  if (!silent) setAssetMapStatus(`Base layer switched to ${assetBaseLayerName}.`);
+}
+
+async function updateAssetMapOverlays() {
+  if (!assetLeafletMap || typeof L === "undefined") return;
+  const showTraffic = document.getElementById("assetOverlayTraffic")?.checked;
+  const showWeather = document.getElementById("assetOverlayWeather")?.checked;
+  const showAlerts = document.getElementById("assetOverlayAlerts")?.checked;
+
+  if (!showTraffic && assetTrafficLayer) {
+    assetLeafletMap.removeLayer(assetTrafficLayer);
+    assetTrafficLayer = null;
+  }
+  if (!showWeather && assetWeatherLayer) {
+    assetLeafletMap.removeLayer(assetWeatherLayer);
+    assetWeatherLayer = null;
+  }
+  if (!showAlerts && assetAlertsLayer) {
+    assetLeafletMap.removeLayer(assetAlertsLayer);
+    assetAlertsLayer = null;
+  }
+
+  if (showTraffic) renderTrafficOverlay();
+  if (showWeather) await renderWeatherOverlay();
+  if (showAlerts) await renderAlertsOverlay();
+}
+
+function renderTrafficOverlay() {
+  if (!assetLeafletMap || typeof L === "undefined") return;
+  if (assetTrafficLayer) {
+    assetLeafletMap.removeLayer(assetTrafficLayer);
+    assetTrafficLayer = null;
+  }
+  const assets = Array.isArray(state.assetMap?.assets) ? state.assetMap.assets : [];
+  const points = assets.filter((a) => Number.isFinite(Number(a.lat)) && Number.isFinite(Number(a.lng)));
+  assetTrafficLayer = L.layerGroup();
+  const cellCount = new Map();
+  points.forEach((a) => {
+    const key = `${Number(a.lat).toFixed(1)}:${Number(a.lng).toFixed(1)}`;
+    cellCount.set(key, (cellCount.get(key) || 0) + 1);
+  });
+  points.forEach((a) => {
+    const key = `${Number(a.lat).toFixed(1)}:${Number(a.lng).toFixed(1)}`;
+    const density = cellCount.get(key) || 1;
+    const color = density >= 5 ? "#ef4444" : density >= 3 ? "#f59e0b" : "#10b981";
+    L.circleMarker([Number(a.lat), Number(a.lng)], {
+      radius: density >= 5 ? 8 : density >= 3 ? 6 : 4,
+      color,
+      fillColor: color,
+      fillOpacity: 0.42,
+      weight: 1
+    }).addTo(assetTrafficLayer);
+  });
+  assetTrafficLayer.addTo(assetLeafletMap);
+}
+
+async function renderWeatherOverlay() {
+  if (!assetLeafletMap || typeof L === "undefined") return;
+  try {
+    const resp = await fetch("https://api.rainviewer.com/public/weather-maps.json");
+    const data = await resp.json();
+    const nowcast = Array.isArray(data?.radar?.nowcast) ? data.radar.nowcast : [];
+    const latest = nowcast.length ? nowcast[nowcast.length - 1] : null;
+    if (!latest?.path) throw new Error("no weather tiles");
+    if (assetWeatherLayer) {
+      assetLeafletMap.removeLayer(assetWeatherLayer);
+      assetWeatherLayer = null;
+    }
+    assetWeatherLayer = L.tileLayer(`https://tilecache.rainviewer.com${latest.path}/256/{z}/{x}/{y}/2/1_1.png`, {
+      opacity: 0.42,
+      attribution: "Weather: RainViewer"
+    });
+    assetWeatherLayer.addTo(assetLeafletMap);
+  } catch (_) {
+    setAssetMapStatus("Weather overlay unavailable right now.");
+  }
+}
+
+async function renderAlertsOverlay() {
+  if (!assetLeafletMap || typeof L === "undefined") return;
+  try {
+    const geo = assetPublicAlertsGeoJson || (await fetchPublicAlertsGeoJson());
+    if (!geo) throw new Error("no alerts");
+    if (assetAlertsLayer) {
+      assetLeafletMap.removeLayer(assetAlertsLayer);
+      assetAlertsLayer = null;
+    }
+    assetAlertsLayer = L.geoJSON(geo, {
+      style: () => ({
+        color: "#ef4444",
+        weight: 1,
+        fillOpacity: 0.08
+      }),
+      onEachFeature: (feature, layer) => {
+        const p = feature?.properties || {};
+        layer.bindPopup(`<strong>${p.event || "Alert"}</strong><br>${p.areaDesc || ""}`);
+      }
+    });
+    assetAlertsLayer.addTo(assetLeafletMap);
+  } catch (_) {
+    setAssetMapStatus("Public alerts overlay unavailable right now.");
+  }
+}
+
+function weatherCodeToText(code) {
+  const c = Number(code);
+  if (c === 0) return "Clear";
+  if ([1, 2].includes(c)) return "Partly Cloudy";
+  if (c === 3) return "Overcast";
+  if ([45, 48].includes(c)) return "Fog";
+  if ([51, 53, 55, 56, 57].includes(c)) return "Drizzle";
+  if ([61, 63, 65, 66, 67, 80, 81, 82].includes(c)) return "Rain";
+  if ([71, 73, 75, 77, 85, 86].includes(c)) return "Snow";
+  if ([95, 96, 99].includes(c)) return "Thunderstorm";
+  return "Mixed";
+}
+
+function summarizeSeverity(severity) {
+  const s = String(severity || "").toLowerCase();
+  if (s.includes("extreme") || s.includes("severe")) return "High";
+  if (s.includes("moderate")) return "Medium";
+  return "Low";
+}
+
+async function fetchPublicAlertsGeoJson() {
+  try {
+    const resp = await fetch("https://api.weather.gov/alerts/active");
+    const geo = await resp.json();
+    assetPublicAlertsGeoJson = geo;
+    return geo;
+  } catch (_) {
+    return null;
+  }
+}
+
+function buildOperationalAlerts() {
+  const alerts = [];
+  const stale = (state.checkCalls || []).filter((c) => (daysSince(c.lastCheckCall) ?? 0) >= 7);
+  stale.slice(0, 8).forEach((c) => {
+    alerts.push({
+      type: "Operational",
+      severity: (daysSince(c.lastCheckCall) ?? 0) >= 14 ? "High" : "Medium",
+      scope: c.driver,
+      details: `No check call in ${daysSince(c.lastCheckCall)} days`
+    });
+  });
+  const suspended = (state.discipline || []).filter((d) => String(d.status || "").toLowerCase().includes("suspend"));
+  suspended.slice(0, 8).forEach((d) => {
+    alerts.push({
+      type: "Operational",
+      severity: "High",
+      scope: d.driver,
+      details: `Discipline status: ${d.status}`
+    });
+  });
+  const trainingPastDue = (state.training?.assignments || []).filter((a) => deriveTrainingAssignmentStatus(a) === "PAST DUE");
+  trainingPastDue.slice(0, 8).forEach((a) => {
+    alerts.push({
+      type: "Operational",
+      severity: "Medium",
+      scope: a.driver,
+      details: `Training past due: ${a.courseTitle}`
+    });
+  });
+  const complianceOps = (state.compliance?.cases || [])
+    .filter((c) => /maintenance|brake|tire|hos|logbook|inspection/i.test(String(c.nature || c.description || "")));
+  complianceOps.slice(0, 8).forEach((c) => {
+    alerts.push({
+      type: "Operational",
+      severity: c.completed ? "Low" : "Medium",
+      scope: c.driver,
+      details: `Compliance issue: ${c.nature || c.description || "Maintenance-related"}`
+    });
+  });
+  return alerts;
+}
+
+async function fetchLocalWeatherForAssets(assets) {
+  const points = [];
+  const seen = new Set();
+  (assets || []).forEach((a) => {
+    if (!Number.isFinite(Number(a.lat)) || !Number.isFinite(Number(a.lng))) return;
+    const lat = Number(a.lat);
+    const lng = Number(a.lng);
+    const key = `${lat.toFixed(2)}:${lng.toFixed(2)}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    points.push({ lat, lng });
+  });
+  const capped = points.slice(0, 24);
+  const weatherRows = [];
+  for (const p of capped) {
+    try {
+      const [geoResp, wxResp] = await Promise.all([
+        fetch(`https://geocoding-api.open-meteo.com/v1/reverse?latitude=${p.lat}&longitude=${p.lng}&language=en&format=json`),
+        fetch(`https://api.open-meteo.com/v1/forecast?latitude=${p.lat}&longitude=${p.lng}&current=temperature_2m,wind_speed_10m,weather_code&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code&forecast_days=2&timezone=auto`)
+      ]);
+      const geo = await geoResp.json();
+      const wx = await wxResp.json();
+      const city = geo?.results?.[0]?.name || "Unknown";
+      const stateName = geo?.results?.[0]?.admin1 || geo?.results?.[0]?.country || "";
+      const current = wx?.current || {};
+      const daily = wx?.daily || {};
+      weatherRows.push({
+        city,
+        state: stateName,
+        now: weatherCodeToText(current.weather_code),
+        temp: Number(current.temperature_2m),
+        wind: Number(current.wind_speed_10m),
+        next: `${weatherCodeToText(daily.weather_code?.[0])} • ${daily.precipitation_probability_max?.[0] ?? 0}% precip`
+      });
+    } catch (_) {
+      // continue
+    }
+  }
+  return weatherRows;
+}
+
+function buildNationalForecast(localWeather, publicAlerts, operationalAlerts) {
+  const rows = localWeather || [];
+  if (!rows.length) {
+    return {
+      headline: "No weather coverage yet. Sync assets and refresh weather.",
+      stats: {}
+    };
+  }
+  const maxWind = Math.max(...rows.map((r) => Number(r.wind) || 0));
+  const maxTemp = Math.max(...rows.map((r) => Number(r.temp) || -999));
+  const minTemp = Math.min(...rows.map((r) => Number(r.temp) || 999));
+  const stormLike = rows.filter((r) => /storm|rain|snow/i.test(String(r.now || ""))).length;
+  const severePublic = (publicAlerts || []).filter((a) => a.severity === "High").length;
+  const severeOperational = (operationalAlerts || []).filter((a) => a.severity === "High").length;
+  const risk = severePublic + severeOperational + stormLike > 10 ? "HIGH" : severePublic + severeOperational + stormLike > 4 ? "MEDIUM" : "LOW";
+  return {
+    headline: `National fleet risk: ${risk}. Coverage points: ${rows.length}. Public alerts: ${(publicAlerts || []).length}. Operational alerts: ${(operationalAlerts || []).length}.`,
+    stats: { maxWind, maxTemp, minTemp, stormLike, severePublic, severeOperational }
+  };
+}
+
+function renderAssetIntel() {
+  const weatherBody = document.getElementById("assetLocalWeatherBody");
+  const alertsBody = document.getElementById("assetOpsAlertsBody");
+  const nationalEl = document.getElementById("assetNationalForecast");
+  if (!weatherBody || !alertsBody || !nationalEl) return;
+
+  const localWeather = assetIntelData.localWeather || [];
+  weatherBody.innerHTML = localWeather.length
+    ? localWeather
+        .slice()
+        .sort((a, b) => String(a.state).localeCompare(String(b.state)) || String(a.city).localeCompare(String(b.city)))
+        .map((w) => `<tr>
+          <td>${w.city}${w.state ? `, ${w.state}` : ""}</td>
+          <td>${w.now}</td>
+          <td>${Number.isFinite(w.temp) ? `${w.temp}°` : "-"}</td>
+          <td>${Number.isFinite(w.wind) ? `${w.wind} mph` : "-"}</td>
+          <td>${w.next || "-"}</td>
+        </tr>`)
+        .join("")
+    : `<tr><td colspan="5" class="empty-muted">No local weather loaded.</td></tr>`;
+
+  const mergedAlerts = [...(assetIntelData.publicAlerts || []), ...(assetIntelData.operationalAlerts || [])];
+  alertsBody.innerHTML = mergedAlerts.length
+    ? mergedAlerts
+        .slice(0, 50)
+        .map((a) => `<tr>
+          <td>${a.type}</td>
+          <td>${a.severity}</td>
+          <td>${a.scope || "-"}</td>
+          <td>${a.details || "-"}</td>
+        </tr>`)
+        .join("")
+    : `<tr><td colspan="4" class="empty-muted">No alerts currently.</td></tr>`;
+
+  const n = assetIntelData.national;
+  if (!n) {
+    nationalEl.textContent = "No national forecast generated yet.";
+  } else {
+    const s = n.stats || {};
+    nationalEl.innerHTML = `<strong>${n.headline}</strong> Max wind: ${s.maxWind ?? "-"} mph • Temp range: ${s.minTemp ?? "-"}° to ${s.maxTemp ?? "-"}° • Storm-impacted zones: ${s.stormLike ?? 0}`;
+  }
+}
+
+async function refreshAssetIntelligence() {
+  const assets = Array.isArray(state.assetMap?.assets) ? state.assetMap.assets : [];
+  if (!assets.length) {
+    setAssetMapStatus("Sync assets first, then refresh weather/alerts.");
+    return;
+  }
+  setAssetMapStatus("Refreshing local weather, national forecast, and real-time alerts...");
+  const [localWeather, geo] = await Promise.all([
+    fetchLocalWeatherForAssets(assets),
+    fetchPublicAlertsGeoJson()
+  ]);
+  const publicAlerts = Array.isArray(geo?.features)
+    ? geo.features.slice(0, 80).map((f) => {
+        const p = f?.properties || {};
+        return {
+          type: "Public",
+          severity: summarizeSeverity(p.severity || p.urgency || p.certainty),
+          scope: p.areaDesc || "Regional",
+          details: `${p.event || "Weather alert"}${p.expires ? ` (expires ${new Date(p.expires).toLocaleString()})` : ""}`
+        };
+      })
+    : [];
+  const operationalAlerts = buildOperationalAlerts();
+  assetIntelData = {
+    localWeather,
+    publicAlerts,
+    operationalAlerts,
+    national: buildNationalForecast(localWeather, publicAlerts, operationalAlerts),
+    updatedAt: new Date().toISOString()
+  };
+  renderAssetIntel();
+  if (document.getElementById("assetOverlayAlerts")?.checked) await renderAlertsOverlay();
+  setAssetMapStatus(`Weather/alerts refreshed at ${new Date().toLocaleTimeString()}.`);
+}
+
+function mapAssetRow(raw, fallbackCompany = "Company") {
+  const lat = Number(raw.latitude ?? raw.lat ?? raw.location?.latitude ?? raw.gps?.latitude);
+  const lng = Number(raw.longitude ?? raw.lng ?? raw.location?.longitude ?? raw.gps?.longitude);
+  return {
+    id: String(raw.id ?? raw.assetId ?? crypto.randomUUID()),
+    company: raw.company || fallbackCompany,
+    assetType: raw.assetType || raw.type || (raw.trailerNumber ? "Trailer" : "Truck"),
+    unitNumber: String(raw.unitNumber ?? raw.name ?? raw.vehicleNumber ?? raw.truckNumber ?? "").trim(),
+    trailerNumber: String(raw.trailerNumber ?? raw.trailer ?? "").trim(),
+    lastSeen: normalizeDateInput(raw.lastSeenAt || raw.lastSeen || raw.lastReportTime) || "",
+    lat: Number.isFinite(lat) ? lat : null,
+    lng: Number.isFinite(lng) ? lng : null
+  };
+}
+
+async function syncMultiSamsaraAssets() {
+  const tokenEntries = [
+    { company: "Company A", token: (document.getElementById("samsaraTokenA")?.value || "").trim() },
+    { company: "Company B", token: (document.getElementById("samsaraTokenB")?.value || "").trim() },
+    { company: "Company C", token: (document.getElementById("samsaraTokenC")?.value || "").trim() }
+  ].filter((x) => x.token);
+  if (!tokenEntries.length) {
+    setAssetMapStatus("Add at least one token to sync assets.");
+    return;
+  }
+  setAssetMapStatus(`Syncing assets from ${tokenEntries.length} account(s)...`);
+  const merged = [];
+  for (const entry of tokenEntries) {
+    try {
+      const response = await fetch("/api/samsara/assets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: entry.token, company: entry.company })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+      const assets = Array.isArray(payload.assets) ? payload.assets : [];
+      assets.forEach((a) => merged.push(mapAssetRow(a, entry.company)));
+    } catch (error) {
+      setAssetMapStatus(`Asset sync warning (${entry.company}): ${error.message || "failed"}`);
+    }
+  }
+  const dedup = [];
+  const seen = new Set();
+  merged.forEach((a) => {
+    const key = `${normalizeNameKey(a.company)}::${normalizeNameKey(a.assetType)}::${normalizeNameKey(a.unitNumber)}::${normalizeNameKey(a.trailerNumber)}`;
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    dedup.push(a);
+  });
+  state.assetMap.importedAt = new Date().toISOString();
+  state.assetMap.assets = dedup;
+  saveState();
+  renderAssetMap();
+  setAssetMapStatus(`Asset sync complete. Loaded ${dedup.length} truck/trailer records from ${tokenEntries.length} account(s).`);
+  await refreshAssetIntelligence();
+}
+
+function renderOverviewLists() {
+  const bottomDrivers = [...state.drivers]
+    .sort((a, b) => a.safetyScore - b.safetyScore)
+    .slice(0, 8);
+  const bottomEl = document.getElementById("bottomDrivers");
+  bottomEl.innerHTML = bottomDrivers.length
+    ? bottomDrivers
+        .map(
+          (d) => `<div class="list-row"><span>${d.name}</span><strong>${d.safetyScore}</strong></div>`
+        )
+        .join("")
+    : `<div class="list-row"><span>No scores yet.</span><strong>-</strong></div>`;
+
+  const priority = [...state.checkCalls]
+    .sort((a, b) => (daysSince(b.lastCheckCall) ?? 0) - (daysSince(a.lastCheckCall) ?? 0))
+    .slice(0, 8);
+  const callEl = document.getElementById("callPriority");
+  callEl.innerHTML = priority.length
+    ? priority
+        .map((r) => {
+          const ds = daysSince(r.lastCheckCall);
+          return `<div class="list-row"><span>${r.driver}</span><strong>${ds ?? "-"}d</strong></div>`;
+        })
+        .join("")
+    : `<div class="list-row"><span>No check calls yet.</span><strong>-</strong></div>`;
+}
+
+function showAddTaskDialog() {
+  openDialog({
+    title: "Add Weekly Task",
+    fields: [
+      { id: "taskName", label: "Task", type: "text", required: true },
+      { id: "taskOwner", label: "Owner", type: "text", required: true }
+    ],
+    onSubmit(values) {
+      state.weeklyTasks.push({
+        id: crypto.randomUUID(),
+        name: values.taskName,
+        owner: values.taskOwner,
+        completed: false,
+        lastCompletedAt: null
+      });
+      saveState();
+      renderAll();
+    }
+  });
+}
+
+function showDisciplineDialog() {
+  openDialog({
+    title: "Add Discipline Case",
+    fields: [
+      { id: "driver", label: "Driver", type: "text", required: true },
+      { id: "level", label: "Level", type: "select", options: ["1", "2", "3"], required: true },
+      { id: "status", label: "Status", type: "select", options: ["Active", "Probation", "Suspended"], required: true },
+      { id: "startDate", label: "Start Date", type: "date", required: true },
+      { id: "endDate", label: "End Date", type: "date", required: false }
+    ],
+    onSubmit(values) {
+      upsertDriver(values.driver, null);
+      upsertDiscipline(values.driver, Number(values.level), values.status, values.startDate, values.endDate || null);
+      saveState();
+      renderAll();
+    }
+  });
+}
+
+function showCheckCallDialog() {
+  openDialog({
+    title: "Log Check Call",
+    fields: [
+      { id: "driver", label: "Driver", type: "text", required: true },
+      { id: "lastCheckCall", label: "Check Call Date", type: "date", required: true },
+      { id: "calledBy", label: "FMT/FMTM", type: "text", required: false, value: "Safety Team" }
+    ],
+    onSubmit(values) {
+      upsertDriver(values.driver, null);
+      upsertCheckCall(values.driver, values.lastCheckCall, values.calledBy || "Safety Team");
+      upsertKwenTracker(values.driver, values.lastCheckCall, values.calledBy || "Safety Team", 0, "Current");
+      addCallActivity(values.driver, values.calledBy || "Safety Team", values.lastCheckCall);
+      saveState();
+      renderAll();
+    }
+  });
+}
+
+function showCheckCallActivityDialog() {
+  openDialog({
+    title: "Log Weekly Caller Activity",
+    fields: [
+      { id: "driver", label: "Driver", type: "text", required: true },
+      { id: "caller", label: "FMT/FMTM", type: "text", required: true },
+      { id: "date", label: "Call Date", type: "date", required: true }
+    ],
+    onSubmit(values) {
+      addCallActivity(values.driver, values.caller, values.date || todayYmd());
+      upsertDriver(values.driver, null);
+      upsertCheckCall(values.driver, values.date || todayYmd(), values.caller);
+      upsertKwenTracker(values.driver, values.date || todayYmd(), values.caller, 0, "Current");
+      saveState();
+      renderAll();
+      setSyncStatus(`Caller activity logged: ${values.caller} -> ${values.driver}.`);
+    }
+  });
+}
+
+function showAddSafetyPendingDialog() {
+  openDialog({
+    title: "Add Safety Video Follow Up Driver",
+    fields: [
+      { id: "driver", label: "Driver", type: "text", required: true },
+      { id: "team", label: "Team", type: "select", options: ["OTR", "AG4"], required: true },
+      { id: "pendingCourses", label: "Pending Courses", type: "number", required: true },
+      { id: "email", label: "Email", type: "text", required: false }
+    ],
+    onSubmit(values) {
+      const driver = String(values.driver || "").trim();
+      if (!driver) return;
+      const team = values.team || "OTR";
+      const pendingCourses = Math.max(0, Number(values.pendingCourses || 0));
+      const key = safetyVideoKey(driver, team);
+      const existing = state.safetyVideos.pending.find((p) => safetyVideoKey(p.driver, p.team) === key);
+      const payload = {
+        team,
+        driver,
+        email: String(values.email || "").trim(),
+        pendingCourses
+      };
+      if (existing) Object.assign(existing, payload);
+      else state.safetyVideos.pending.push(payload);
+      upsertDriver(driver, null);
+      getSafetyFollowUp(payload, true);
+      saveState();
+      renderAll();
+      setSyncStatus(`Safety follow-up driver ${existing ? "updated" : "added"}.`);
+    }
+  });
+}
+
+function showAddComplianceCaseDialog() {
+  openDialog({
+    title: "Add Compliance Case",
+    fields: [
+      { id: "driver", label: "Driver", type: "text", required: true },
+      { id: "caseNo", label: "Case #", type: "text", required: true },
+      { id: "reportDate", label: "Report Date", type: "date", required: true },
+      { id: "nature", label: "Nature", type: "text", required: true },
+      { id: "description", label: "Description", type: "text", required: false },
+      { id: "reporter", label: "Reporter", type: "text", required: false }
+    ],
+    onSubmit(values) {
+      const rec = {
+        id: crypto.randomUUID(),
+        driver: values.driver,
+        caseNo: values.caseNo,
+        reportDate: values.reportDate || todayYmd(),
+        nature: values.nature,
+        description: values.description || "",
+        reporter: values.reporter || "",
+        completed: false,
+        needsFollowUp: true
+      };
+      state.compliance.cases.push(rec);
+      upsertDriver(values.driver, null);
+      saveState();
+      renderAll();
+      setSyncStatus(`Compliance case ${rec.caseNo} added for ${rec.driver}.`);
+    }
+  });
+}
+
+function toggleComplianceCaseCompleted(id, checked) {
+  const rec = state.compliance.cases.find((c) => c.id === id);
+  if (!rec) return;
+  rec.completed = checked;
+  rec.completedAt = checked ? todayYmd() : null;
+  rec.needsFollowUp = !checked;
+  saveState();
+  renderAll();
+}
+
+function logComplianceCaseCheckCall(id) {
+  const rec = state.compliance.cases.find((c) => c.id === id);
+  if (!rec) return;
+  const today = todayYmd();
+  upsertCheckCall(rec.driver, today, "Safety Team");
+  upsertKwenTracker(rec.driver, today, "Safety Team", 0, "Current");
+  addCallActivity(rec.driver, "Safety Team", today);
+  rec.lastCheckCall = today;
+  rec.needsFollowUp = false;
+  saveState();
+  renderAll();
+  setSyncStatus(`Compliance check call logged for ${rec.driver}.`);
+}
+
+function removeComplianceCase(id) {
+  const idx = state.compliance.cases.findIndex((c) => c.id === id);
+  if (idx < 0) return;
+  const rec = state.compliance.cases[idx];
+  state.compliance.cases.splice(idx, 1);
+  saveState();
+  renderAll();
+  setSyncStatus(`Compliance case ${rec.caseNo || ""} removed.`);
+}
+
+function showAddEmpathyDialog() {
+  openDialog({
+    title: "Add Driver Empathy Report",
+    fields: [
+      { id: "driver", label: "Driver", type: "text", required: true },
+      { id: "dateReported", label: "Date Reported", type: "date", required: true },
+      { id: "reportedBy", label: "Reported By", type: "text", required: true },
+      { id: "issue", label: "Issue", type: "text", required: true },
+      { id: "managerOwner", label: "Manager Owner", type: "text", required: false },
+      { id: "status", label: "Status", type: "select", options: ["Open", "In Progress", "Escalated", "Resolved"], required: true },
+      { id: "solution", label: "Current Solution / Notes", type: "text", required: false }
+    ],
+    onSubmit(values) {
+      const rec = {
+        id: crypto.randomUUID(),
+        driver: values.driver,
+        dateReported: values.dateReported || todayYmd(),
+        reportedBy: values.reportedBy,
+        issue: values.issue,
+        managerOwner: values.managerOwner || "",
+        status: values.status || "Open",
+        solution: values.solution || "",
+        dateResolved: null
+      };
+      state.empathy.active.push(rec);
+      upsertDriver(values.driver, null);
+      saveState();
+      renderAll();
+      setSyncStatus(`Empathy report added for ${rec.driver}.`);
+    }
+  });
+}
+
+function showEditEmpathyDialog(id) {
+  const rec = state.empathy.active.find((r) => r.id === id);
+  if (!rec) return;
+  openDialog({
+    title: "Update Empathy Report",
+    fields: [
+      { id: "managerOwner", label: "Manager Owner", type: "text", required: false, value: rec.managerOwner || "" },
+      { id: "status", label: "Status", type: "select", options: ["Open", "In Progress", "Escalated", "Resolved"], required: true, value: rec.status || "Open" },
+      { id: "solution", label: "Solution / Update", type: "text", required: false, value: rec.solution || "" }
+    ],
+    onSubmit(values) {
+      rec.managerOwner = values.managerOwner || rec.managerOwner;
+      rec.status = values.status || rec.status;
+      rec.solution = values.solution || rec.solution;
+      saveState();
+      renderAll();
+      setSyncStatus(`Empathy report updated for ${rec.driver}.`);
+    }
+  });
+}
+
+function resolveEmpathyReport(id) {
+  const idx = state.empathy.active.findIndex((r) => r.id === id);
+  if (idx < 0) return;
+  const rec = state.empathy.active[idx];
+  rec.status = "Resolved";
+  rec.dateResolved = todayYmd();
+  state.empathy.history.push({
+    ...rec,
+    archivedAt: todayYmd()
+  });
+  state.empathy.active.splice(idx, 1);
+  saveState();
+  renderAll();
+  setSyncStatus(`Empathy report resolved for ${rec.driver}.`);
+}
+
+function removeEmpathyReport(id) {
+  state.empathy.active = state.empathy.active.filter((r) => r.id !== id);
+  saveState();
+  renderAll();
+  setSyncStatus("Empathy report removed.");
+}
+
+function archiveResolvedEmpathyReports() {
+  const resolved = state.empathy.active.filter((r) => String(r.status || "").toLowerCase().includes("resolved"));
+  if (!resolved.length) {
+    setSyncStatus("No empathy reports ready to archive.");
+    return;
+  }
+  const ids = new Set(resolved.map((r) => r.id));
+  resolved.forEach((r) => {
+    state.empathy.history.push({
+      ...r,
+      dateResolved: r.dateResolved || todayYmd(),
+      archivedAt: todayYmd()
+    });
+  });
+  state.empathy.active = state.empathy.active.filter((r) => !ids.has(r.id));
+  saveState();
+  renderAll();
+  setSyncStatus(`Archived ${resolved.length} empathy report(s).`);
+}
+
+function showAddAddendumAckDialog() {
+  openDialog({
+    title: "Add Addendum Acknowledgment",
+    fields: [
+      { id: "name", label: "Team Member", type: "text", required: true },
+      { id: "role", label: "Role", type: "text", required: true },
+      { id: "date", label: "Date", type: "date", required: true },
+      { id: "notes", label: "Notes", type: "text", required: false }
+    ],
+    onSubmit(values) {
+      state.addendum.acknowledgments.push({
+        id: crypto.randomUUID(),
+        name: values.name,
+        role: values.role,
+        date: values.date || todayYmd(),
+        notes: values.notes || ""
+      });
+      saveState();
+      renderAll();
+      setSyncStatus(`Addendum acknowledgment recorded for ${values.name}.`);
+    }
+  });
+}
+
+function removeAddendumAck(id) {
+  state.addendum.acknowledgments = state.addendum.acknowledgments.filter((a) => a.id !== id);
+  saveState();
+  renderAll();
+  setSyncStatus("Acknowledgment removed.");
+}
+
+function toggleDisciplineCompleted(id, checked) {
+  const rec = state.discipline.find((d) => d.id === id);
+  if (!rec) return;
+  rec.completed = checked;
+  rec.completedAt = checked ? todayYmd() : null;
+  saveState();
+  renderAll();
+}
+
+function archiveDisciplineCase(id, reason = "Completed") {
+  const idx = state.discipline.findIndex((d) => d.id === id);
+  if (idx < 0) return;
+  const rec = state.discipline[idx];
+  state.disciplineHistory.push({
+    ...rec,
+    archivedAt: todayYmd(),
+    archiveReason: reason
+  });
+  state.discipline.splice(idx, 1);
+  saveState();
+  renderAll();
+  setSyncStatus(`Archived discipline case for ${rec.driver}.`);
+}
+
+function archiveCompletedDiscipline() {
+  const toArchive = state.discipline.filter((d) => d.completed || (daysUntil(d.endDate) ?? 1) < 0);
+  if (!toArchive.length) {
+    setSyncStatus("No completed discipline cases to archive.");
+    return;
+  }
+  const ids = new Set(toArchive.map((r) => r.id));
+  toArchive.forEach((r) => {
+    state.disciplineHistory.push({
+      ...r,
+      archivedAt: todayYmd(),
+      archiveReason: r.completed ? "Marked complete" : "End date passed"
+    });
+  });
+  state.discipline = state.discipline.filter((d) => !ids.has(d.id));
+  saveState();
+  renderAll();
+  setSyncStatus(`Archived ${toArchive.length} completed discipline case(s).`);
+}
+
+function removeDisciplineCase(id) {
+  const idx = state.discipline.findIndex((d) => d.id === id);
+  if (idx < 0) return;
+  const rec = state.discipline[idx];
+  state.discipline.splice(idx, 1);
+  saveState();
+  renderAll();
+  setSyncStatus(`Removed discipline case for ${rec.driver}.`);
+}
+
+function logCheckCallTodayById(id) {
+  const rec = state.checkCalls.find((c) => c.id === id);
+  const tracker = state.kwenTracker.find((r) => r.id === id);
+  const driverName = rec?.driver || tracker?.driver;
+  if (!driverName) return;
+  const today = todayYmd();
+  const caller = rec?.lastCaller || tracker?.executedBy || "Safety Team";
+  if (rec) {
+    rec.lastCheckCall = today;
+    rec.lastCaller = caller;
+  }
+  if (tracker) {
+    tracker.lastCheckCall = today;
+    tracker.daysPassed = 0;
+    tracker.executedBy = caller;
+    tracker.status = "Current";
+  }
+  upsertCheckCall(driverName, today, caller);
+  upsertKwenTracker(driverName, today, caller, 0, "Current");
+  addCallActivity(driverName, caller, today);
+  saveState();
+  renderAll();
+  setSyncStatus(`Logged check call for ${driverName}.`);
+}
+
+function removeCheckCallById(id) {
+  const idx = state.checkCalls.findIndex((c) => c.id === id);
+  const tIdx = state.kwenTracker.findIndex((r) => r.id === id);
+  if (idx < 0 && tIdx < 0) return;
+  const rec = idx >= 0 ? state.checkCalls[idx] : state.kwenTracker[tIdx];
+  if (idx >= 0) state.checkCalls.splice(idx, 1);
+  if (tIdx >= 0) state.kwenTracker.splice(tIdx, 1);
+  saveState();
+  renderAll();
+  setSyncStatus(`Removed check call row for ${rec.driver}.`);
+}
+
+function logTrackerCallById(id) {
+  const row = state.kwenTracker.find((r) => r.id === id);
+  if (!row) return;
+  const today = todayYmd();
+  row.lastCheckCall = today;
+  row.daysPassed = 0;
+  row.executedBy = "Safety Team";
+  row.status = "Current";
+  upsertCheckCall(row.driver, today, row.executedBy || "Safety Team");
+  addCallActivity(row.driver, row.executedBy || "Safety Team", today);
+  saveState();
+  renderAll();
+  setSyncStatus(`Logged tracker check call for ${row.driver}.`);
+}
+
+function removeTrackerRowById(id) {
+  const idx = state.kwenTracker.findIndex((r) => r.id === id);
+  if (idx < 0) return;
+  const row = state.kwenTracker[idx];
+  state.kwenTracker.splice(idx, 1);
+  saveState();
+  renderAll();
+  setSyncStatus(`Removed tracker row for ${row.driver}.`);
+}
+
+function safetyVideoKey(driver, team) {
+  return `${normalizeNameKey(driver)}::${String(team || "").toUpperCase()}`;
+}
+
+function getSafetyFollowUp(row, createIfMissing = false) {
+  const key = safetyVideoKey(row.driver, row.team);
+  let rec = state.safetyVideos.followUps.find((f) => f.key === key);
+  if (!rec && createIfMissing) {
+    rec = {
+      id: crypto.randomUUID(),
+      key,
+      driver: row.driver,
+      team: row.team,
+      called: false,
+      lastCalled: null,
+      nextFollowUp: null
+    };
+    state.safetyVideos.followUps.push(rec);
+  }
+  return rec;
+}
+
+function getSafetyFollowUpByKey(key) {
+  return state.safetyVideos.followUps.find((f) => f.key === key);
+}
+
+function toggleSafetyVideoCalled(key, checked) {
+  const rec = getSafetyFollowUpByKey(key);
+  if (!rec) return;
+  rec.called = checked;
+  rec.lastCalled = checked ? todayYmd() : rec.lastCalled;
+  if (checked) {
+    upsertCheckCall(rec.driver, rec.lastCalled, "Safety Team");
+    upsertKwenTracker(rec.driver, rec.lastCalled, "Safety Team", 0, "Current");
+    addCallActivity(rec.driver, "Safety Team", rec.lastCalled);
+  }
+  saveState();
+  renderAll();
+}
+
+function updateSafetyVideoNextFollowUp(key, value) {
+  const rec = getSafetyFollowUpByKey(key);
+  if (!rec) return;
+  rec.nextFollowUp = value || null;
+  saveState();
+}
+
+function logSafetyVideoCall(key) {
+  const rec = getSafetyFollowUpByKey(key);
+  if (!rec) return;
+  const today = todayYmd();
+  rec.called = true;
+  rec.lastCalled = today;
+  upsertCheckCall(rec.driver, today, "Safety Team");
+  upsertKwenTracker(rec.driver, today, "Safety Team", 0, "Current");
+  addCallActivity(rec.driver, "Safety Team", today);
+  saveState();
+  renderAll();
+  setSyncStatus(`Logged safety video follow-up call for ${rec.driver}.`);
+}
+
+function removeSafetyVideoPendingDriver(key) {
+  const idx = state.safetyVideos.pending.findIndex((p) => safetyVideoKey(p.driver, p.team) === key);
+  if (idx < 0) return;
+  const row = state.safetyVideos.pending[idx];
+  state.safetyVideos.pending.splice(idx, 1);
+  state.safetyVideos.followUps = state.safetyVideos.followUps.filter((f) => f.key !== key);
+  saveState();
+  renderAll();
+  setSyncStatus(`Removed ${row.driver} from Safety Videos follow-up list.`);
+}
+
+function setCheckCallOpsStatus(message) {
+  const el = document.getElementById("checkCallOpsStatus");
+  if (el) el.textContent = message;
+}
+
+function addCallActivity(driver, caller, date) {
+  const d = normalizeDateInput(date) || todayYmd();
+  const canonicalDriver = resolveCanonicalDriverName(driver);
+  const callerNorm = String(caller || "Safety Team").trim();
+  const existing = (state.callActivity || []).find(
+    (a) => normalizeNameKey(a.driver) === normalizeNameKey(canonicalDriver) && normalizeNameKey(a.caller) === normalizeNameKey(callerNorm) && a.date === d
+  );
+  if (existing) return existing;
+  const activity = {
+    id: crypto.randomUUID(),
+    driver: canonicalDriver,
+    caller: callerNorm,
+    date: d
+  };
+  state.callActivity.push(activity);
+  return activity;
+}
+
+function parseWeeklyCountSheet(rows) {
+  const batches = [];
+  let i = 0;
+  while (i < rows.length) {
+    const row = rows[i] || [];
+    const dayRow = rows[i - 1] || [];
+    const hasDateRow =
+      row.length >= 9 &&
+      String(row[8] || "").toLowerCase().includes("total") &&
+      [1, 2, 3, 4, 5, 6, 7].some((idx) => normalizeDateInput(row[idx]));
+    if (!hasDateRow) {
+      i += 1;
+      continue;
+    }
+
+    const dayLabels = [1, 2, 3, 4, 5, 6, 7].map((idx) => ({
+      name: String(dayRow[idx] || "").trim() || ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][idx - 1],
+      date: normalizeDateInput(row[idx]) || ""
+    }));
+    const weekStart = dayLabels[0]?.date || "";
+    const weekEnd = dayLabels[6]?.date || "";
+    const label = weekStart && weekEnd ? `${weekStart} to ${weekEnd}` : `Week ${batches.length + 1}`;
+
+    const agents = [];
+    i += 1;
+    while (i < rows.length) {
+      const r = rows[i] || [];
+      const maybeNext = r.length >= 9 && String(r[8] || "").toLowerCase().includes("total") && [1, 2, 3, 4, 5, 6, 7].some((idx) => normalizeDateInput(r[idx]));
+      if (maybeNext) break;
+      const name = String(r[0] || "").trim();
+      if (!name) {
+        i += 1;
+        continue;
+      }
+      const daily = [1, 2, 3, 4, 5, 6, 7].map((idx) => {
+        const raw = String(r[idx] ?? "").trim();
+        if (!raw) return "";
+        if (/^(off|absent)$/i.test(raw)) return raw.toUpperCase();
+        const n = Number(raw);
+        return Number.isFinite(n) ? String(n) : raw;
+      });
+      const t = Number(String(r[8] ?? "").trim());
+      const total = Number.isFinite(t) ? t : daily.reduce((sum, d) => sum + (Number(d) || 0), 0);
+      agents.push({ id: crypto.randomUUID(), name, daily, total });
+      i += 1;
+    }
+    batches.push({
+      id: crypto.randomUUID(),
+      label,
+      weekStart,
+      weekEnd,
+      dayLabels,
+      agents
+    });
+  }
+  return batches;
+}
+
+function openDialog({ title, fields, onSubmit }) {
+  const dialog = document.getElementById("formDialog");
+  const form = document.getElementById("formContent");
+
+  form.innerHTML = `
+    <h3>${title}</h3>
+    ${fields
+      .map((f) => {
+        if (f.type === "select") {
+          const selectedValue = f.value ?? "";
+          return `
+            <div class="form-row">
+              <label for="${f.id}">${f.label}</label>
+              <select id="${f.id}" ${f.required ? "required" : ""}>
+                ${f.options.map((o) => `<option value="${o}" ${String(o) === String(selectedValue) ? "selected" : ""}>${o}</option>`).join("")}
+              </select>
+            </div>
+          `;
+        }
+        const inputType = f.type || "text";
+        const inputValue = f.value ?? "";
+        return `
+          <div class="form-row">
+            <label for="${f.id}">${f.label}</label>
+            <input id="${f.id}" type="${inputType}" value="${escAttr(inputValue)}" ${f.required ? "required" : ""} />
+          </div>
+        `;
+      })
+      .join("")}
+    <div class="dialog-actions">
+      <button class="btn ghost" value="cancel" formmethod="dialog">Cancel</button>
+      <button class="btn" type="submit">Save</button>
+    </div>
+  `;
+
+  form.onsubmit = (e) => {
+    e.preventDefault();
+    const values = {};
+    fields.forEach((f) => {
+      values[f.id] = document.getElementById(f.id).value;
+    });
+    onSubmit(values);
+    dialog.close();
+  };
+
+  dialog.showModal();
+}
+
+function seedData() {
+  state.drivers = [
+    { id: crypto.randomUUID(), name: "Alex Carter", safetyScore: 71 },
+    { id: crypto.randomUUID(), name: "Tony Reed", safetyScore: 64 },
+    { id: crypto.randomUUID(), name: "Jasmine Lee", safetyScore: 83 },
+    { id: crypto.randomUUID(), name: "Marco Ruiz", safetyScore: 59 },
+    { id: crypto.randomUUID(), name: "Darius Kemp", safetyScore: 76 },
+    { id: crypto.randomUUID(), name: "Mina Patel", safetyScore: 68 }
+  ];
+
+  state.checkCalls = [
+    { id: crypto.randomUUID(), driver: "Alex Carter", lastCheckCall: daysAgoDate(2) },
+    { id: crypto.randomUUID(), driver: "Tony Reed", lastCheckCall: daysAgoDate(7) },
+    { id: crypto.randomUUID(), driver: "Jasmine Lee", lastCheckCall: daysAgoDate(5) },
+    { id: crypto.randomUUID(), driver: "Marco Ruiz", lastCheckCall: daysAgoDate(10) }
+  ];
+
+  state.discipline = [
+    {
+      id: crypto.randomUUID(),
+      driver: "Tony Reed",
+      level: 3,
+      status: "Suspended",
+      startDate: daysAgoDate(2),
+      endDate: daysAgoDate(-5)
+    },
+    {
+      id: crypto.randomUUID(),
+      driver: "Marco Ruiz",
+      level: 2,
+      status: "Probation",
+      startDate: daysAgoDate(4),
+      endDate: daysAgoDate(-10)
+    }
+  ];
+
+  state.kwenTracker = [];
+  state.disciplineHistory = [];
+  state.checkCallOps = {
+    importedAt: null,
+    weeklyBatches: []
+  };
+  state.callActivity = [];
+  state.compliance = {
+    importedAt: null,
+    executiveMetrics: [],
+    cases: [],
+    repeatOffenders: []
+  };
+  state.empathy = {
+    active: [],
+    history: []
+  };
+  state.addendum = {
+    importedAt: null,
+    paragraphs: [],
+    acknowledgments: []
+  };
+  state.training = structuredClone(initialState.training);
+  state.assetMap = {
+    importedAt: null,
+    assets: []
+  };
+  state.safetyVideos = {
+    importedAt: null,
+    pending: [],
+    courseAudit: [],
+    followUps: []
+  };
+
+  saveState();
+  renderAll();
+}
+
+function daysAgoDate(days) {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return d.toISOString().slice(0, 10);
+}
+
+function loadSavedSettings() {
+  const token = localStorage.getItem(SAMSARA_TOKEN_KEY) || "";
+  const tokenInput = document.getElementById("samsaraToken");
+  if (tokenInput) tokenInput.value = token;
+  const tokenA = localStorage.getItem("fleet_safety_samsara_token_a") || "";
+  const tokenB = localStorage.getItem("fleet_safety_samsara_token_b") || "";
+  const tokenC = localStorage.getItem("fleet_safety_samsara_token_c") || "";
+  const a = document.getElementById("samsaraTokenA");
+  const b = document.getElementById("samsaraTokenB");
+  const c = document.getElementById("samsaraTokenC");
+  if (a) a.value = tokenA;
+  if (b) b.value = tokenB;
+  if (c) c.value = tokenC;
+}
+
+function saveSamsaraToken() {
+  const token = (document.getElementById("samsaraToken").value || "").trim();
+  localStorage.setItem(SAMSARA_TOKEN_KEY, token);
+  setSyncStatus(token ? "Samsara token saved." : "Samsara token cleared.");
+}
+
+function setSyncStatus(message) {
+  const el = document.getElementById("syncStatus");
+  if (!el) return;
+  el.textContent = message;
+}
+
+function normalizeDateInput(value) {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value === "number" && value > 20000 && value < 70000) {
+    const utcDays = Math.floor(value - 25569);
+    const utcValue = utcDays * 86400;
+    const dateInfo = new Date(utcValue * 1000);
+    return dateInfo.toISOString().slice(0, 10);
+  }
+  const raw = String(value).trim();
+  if (!raw) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  if (/^\d+(\.\d+)?$/.test(raw)) {
+    const serial = Number(raw);
+    if (serial > 20000 && serial < 70000) {
+      const utcDays = Math.floor(serial - 25569);
+      const utcValue = utcDays * 86400;
+      const dateInfo = new Date(utcValue * 1000);
+      return dateInfo.toISOString().slice(0, 10);
+    }
+  }
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString().slice(0, 10);
+}
+
+function parseCsv(text) {
+  const rows = [];
+  let row = [];
+  let cell = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i += 1) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"' && text[i + 1] === '"') {
+        cell += '"';
+        i += 1;
+      } else if (c === '"') {
+        inQuotes = false;
+      } else {
+        cell += c;
+      }
+      continue;
+    }
+    if (c === '"') {
+      inQuotes = true;
+      continue;
+    }
+    if (c === ",") {
+      row.push(cell.trim());
+      cell = "";
+      continue;
+    }
+    if (c === "\n") {
+      row.push(cell.trim());
+      rows.push(row);
+      row = [];
+      cell = "";
+      continue;
+    }
+    if (c !== "\r") cell += c;
+  }
+  if (cell.length || row.length) {
+    row.push(cell.trim());
+    rows.push(row);
+  }
+  return rows;
+}
+
+function normalizeHeader(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ");
+}
+
+function findLikelyHeaderRow(rows) {
+  const hints = ["driver", "name", "check", "call", "score", "discipline", "status", "date"];
+  const limit = Math.min(rows.length, 20);
+  let bestIdx = 0;
+  let bestScore = -1;
+
+  for (let i = 0; i < limit; i += 1) {
+    const cells = (rows[i] || []).map(normalizeHeader).filter(Boolean);
+    if (cells.length < 2) continue;
+    let score = cells.length;
+    cells.forEach((cell) => {
+      hints.forEach((hint) => {
+        if (cell.includes(hint)) score += 2;
+      });
+    });
+    if (score > bestScore) {
+      bestScore = score;
+      bestIdx = i;
+    }
+  }
+  return bestIdx;
+}
+
+function rowsToObjects(rows) {
+  if (!rows.length) return [];
+  const headerIdx = findLikelyHeaderRow(rows);
+  const headers = (rows[headerIdx] || []).map(normalizeHeader);
+  const objects = [];
+
+  for (let i = headerIdx + 1; i < rows.length; i += 1) {
+    const row = rows[i] || [];
+    if (!row.some((v) => String(v ?? "").trim())) continue;
+    const obj = {};
+    headers.forEach((h, idx) => {
+      if (!h) return;
+      obj[h] = row[idx] ?? "";
+    });
+    objects.push(obj);
+  }
+  return objects;
+}
+
+function scoreHeaderRow(headers) {
+  const joined = headers.map(normalizeHeader).join(" | ");
+  let score = headers.length;
+  if (joined.includes("driver name")) score += 15;
+  if (joined.includes("last check call")) score += 15;
+  if (joined.includes("fmt fmtm who executed") || joined.includes("fmt")) score += 10;
+  if (joined.includes("days passed since last check call")) score += 10;
+  if (joined.includes("status")) score += 4;
+  return score;
+}
+
+function pickBestWorksheetRows(workbook) {
+  let bestRows = [];
+  let bestScore = -1;
+  workbook.SheetNames.forEach((sheetName) => {
+    const worksheet = workbook.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
+    const headerIdx = findLikelyHeaderRow(rows);
+    const headerRow = rows[headerIdx] || [];
+    const score = scoreHeaderRow(headerRow);
+    if (score > bestScore || (score === bestScore && rows.length > bestRows.length)) {
+      bestScore = score;
+      bestRows = rows;
+    }
+  });
+  return bestRows;
+}
+
+function worksheetRows(workbook, sheetName) {
+  const ws = workbook.Sheets[sheetName];
+  if (!ws) return [];
+  return XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+}
+
+function normalizePendingBucketLabel(value) {
+  const text = String(value || "").trim();
+  const m = text.match(/pending\s+(\d+)\s+courses?/i);
+  if (!m) return null;
+  return Number(m[1]);
+}
+
+function parseFollowUpSheet(rows, team) {
+  if (!rows.length) return [];
+  const header = rows[0] || [];
+  const pendingCols = [];
+  header.forEach((cell, idx) => {
+    const pendingCount = normalizePendingBucketLabel(cell);
+    if (Number.isFinite(pendingCount)) pendingCols.push({ idx, pendingCount });
+  });
+  if (!pendingCols.length) return [];
+
+  const out = [];
+  for (let r = 1; r < rows.length; r += 1) {
+    const row = rows[r] || [];
+    pendingCols.forEach(({ idx, pendingCount }) => {
+      const driver = String(row[idx] || "").trim();
+      if (!driver || /pending/i.test(driver)) return;
+      const email = String(row[idx - 1] || "").trim();
+      out.push({
+        team,
+        driver,
+        email,
+        pendingCourses: pendingCount
+      });
+    });
+  }
+  return out;
+}
+
+function parseCompletionAuditSheet(rows, team) {
+  const out = [];
+  let currentCourse = "";
+  for (let i = 0; i < rows.length; i += 1) {
+    const row = rows[i] || [];
+    const first = String(row[0] || "").trim();
+    if (first && /training\s+(video|course)/i.test(first)) {
+      currentCourse = first;
+      continue;
+    }
+    const second = String(row[1] || "").trim();
+    const summary = String(row[6] || "").trim();
+    if (/otr drivers assigned/i.test(second) && summary) {
+      out.push({
+        team,
+        course: currentCourse || "Training Course",
+        summary
+      });
+    }
+  }
+  return out;
+}
+
+function pickValue(obj, keys) {
+  const normalizedEntries = Object.entries(obj).map(([k, v]) => [normalizeHeader(k), v]);
+  const keySet = new Set(normalizedEntries.map(([k]) => k));
+
+  for (const key of keys) {
+    const nk = normalizeHeader(key);
+    if (obj[key] !== undefined && obj[key] !== null && String(obj[key]).trim() !== "") {
+      return String(obj[key]).trim();
+    }
+    if (keySet.has(nk)) {
+      const val = normalizedEntries.find(([k]) => k === nk)?.[1];
+      if (val !== undefined && val !== null && String(val).trim() !== "") return String(val).trim();
+    }
+    const contains = normalizedEntries.find(([k, v]) => k.includes(nk) && String(v ?? "").trim() !== "");
+    if (contains) {
+      return String(contains[1]).trim();
+    }
+  }
+  return "";
+}
+
+function normalizeNameKey(name) {
+  return String(name || "")
+    .toLowerCase()
+    .replace(/\(.*?\)/g, " ")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function findByDriverNameKey(list, key, accessor) {
+  return list.find((item) => normalizeNameKey(accessor(item)) === key);
+}
+
+function resolveCanonicalDriverName(name) {
+  const key = normalizeNameKey(name);
+  if (!key) return "";
+  const fromDrivers = findByDriverNameKey(state.drivers, key, (d) => d.name);
+  if (fromDrivers) return fromDrivers.name;
+  const fromCalls = findByDriverNameKey(state.checkCalls, key, (d) => d.driver);
+  if (fromCalls) return fromCalls.driver;
+  const fromDiscipline = findByDriverNameKey(state.discipline, key, (d) => d.driver);
+  if (fromDiscipline) return fromDiscipline.driver;
+  const fromTracker = findByDriverNameKey(state.kwenTracker, key, (d) => d.driver);
+  if (fromTracker) return fromTracker.driver;
+  return String(name || "").trim();
+}
+
+function isDisciplineStatus(value) {
+  const normalized = normalizeHeader(value);
+  return normalized === "active" || normalized === "probation" || normalized === "suspended";
+}
+
+function isValidDate(dateStr) {
+  return Boolean(dateStr && /^\d{4}-\d{2}-\d{2}$/.test(dateStr));
+}
+
+function upsertDriver(name, safetyScore = null) {
+  const rawName = String(name || "").trim();
+  const key = normalizeNameKey(rawName);
+  if (!key) return null;
+  const existing = findByDriverNameKey(state.drivers, key, (d) => d.name);
+  if (existing) {
+    if (Number.isFinite(safetyScore)) existing.safetyScore = safetyScore;
+    return { driver: existing, created: false };
+  }
+  const added = {
+    id: crypto.randomUUID(),
+    name: rawName,
+    safetyScore: Number.isFinite(safetyScore) ? safetyScore : 0
+  };
+  state.drivers.push(added);
+  return { driver: added, created: true };
+}
+
+function upsertCheckCall(driver, date, calledBy = "") {
+  const canonicalDriver = resolveCanonicalDriverName(driver);
+  if (!canonicalDriver || !date) return;
+  const key = normalizeNameKey(canonicalDriver);
+  const existing = findByDriverNameKey(state.checkCalls, key, (c) => c.driver);
+  if (existing) {
+    if (!existing.lastCheckCall || !isValidDate(existing.lastCheckCall) || new Date(date) >= new Date(existing.lastCheckCall)) {
+      existing.lastCheckCall = date;
+    }
+    if (calledBy) existing.lastCaller = calledBy;
+    existing.driver = canonicalDriver;
+  } else {
+    state.checkCalls.push({ id: crypto.randomUUID(), driver: canonicalDriver, lastCheckCall: date, lastCaller: calledBy || "" });
+  }
+}
+
+function upsertDiscipline(driver, level, status, startDate, endDate) {
+  const canonicalDriver = resolveCanonicalDriverName(driver);
+  if (!canonicalDriver || !status) return;
+  const key = normalizeNameKey(canonicalDriver);
+  const existing = findByDriverNameKey(state.discipline, key, (d) => d.driver);
+  const payload = {
+    id: existing ? existing.id : crypto.randomUUID(),
+    driver: canonicalDriver,
+    level: Number.isFinite(level) ? level : 1,
+    status,
+    startDate: startDate || null,
+    endDate: endDate || null
+  };
+  if (existing) {
+    Object.assign(existing, payload);
+  } else {
+    state.discipline.push(payload);
+  }
+}
+
+function upsertKwenTracker(driver, lastCheckCall, executedBy, daysPassed, status) {
+  const canonicalDriver = resolveCanonicalDriverName(driver);
+  if (!canonicalDriver) return;
+  const key = normalizeNameKey(canonicalDriver);
+  const existing = findByDriverNameKey(state.kwenTracker, key, (d) => d.driver);
+  const numericDays = Number(daysPassed);
+  const normalizedDays = Number.isFinite(numericDays) ? numericDays : null;
+  const payload = {
+    id: existing ? existing.id : crypto.randomUUID(),
+    driver: canonicalDriver,
+    lastCheckCall: lastCheckCall || existing?.lastCheckCall || null,
+    executedBy: String(executedBy || existing?.executedBy || "").trim(),
+    daysPassed: normalizedDays,
+    status: String(status || existing?.status || "Current").trim()
+  };
+  if (existing) {
+    const shouldUseNewDate =
+      isValidDate(lastCheckCall) && (!isValidDate(existing.lastCheckCall) || new Date(lastCheckCall) >= new Date(existing.lastCheckCall));
+    if (shouldUseNewDate) {
+      existing.lastCheckCall = lastCheckCall;
+      if (!Number.isFinite(payload.daysPassed)) existing.daysPassed = daysSince(lastCheckCall);
+    }
+    if (payload.executedBy) existing.executedBy = payload.executedBy;
+    if (Number.isFinite(payload.daysPassed)) existing.daysPassed = payload.daysPassed;
+    if (payload.status) existing.status = payload.status;
+    existing.driver = canonicalDriver;
+    return;
+  }
+  if (!Number.isFinite(payload.daysPassed) && isValidDate(payload.lastCheckCall)) {
+    payload.daysPassed = daysSince(payload.lastCheckCall);
+  }
+  state.kwenTracker.push(payload);
+}
+
+function mergeListByNameKey(list, accessor, resolver) {
+  const map = new Map();
+  list.forEach((item) => {
+    const key = normalizeNameKey(accessor(item));
+    if (!key) return;
+    if (!map.has(key)) {
+      map.set(key, item);
+      return;
+    }
+    const existing = map.get(key);
+    map.set(key, resolver(existing, item));
+  });
+  return [...map.values()];
+}
+
+function dedupeDriverData(options = {}) {
+  const { silent = false } = options;
+  const beforeCount =
+    state.drivers.length +
+    state.checkCalls.length +
+    state.discipline.length +
+    state.kwenTracker.length +
+    (state.compliance?.cases?.length || 0) +
+    (state.compliance?.repeatOffenders?.length || 0) +
+    (state.empathy?.active?.length || 0) +
+    (state.empathy?.history?.length || 0) +
+    (state.callActivity?.length || 0) +
+    (state.safetyVideos?.pending?.length || 0) +
+    (state.safetyVideos?.followUps?.length || 0);
+
+  state.drivers = mergeListByNameKey(state.drivers, (d) => d.name, (a, b) => {
+    const scoreA = Number(a.safetyScore) || 0;
+    const scoreB = Number(b.safetyScore) || 0;
+    if (scoreB > scoreA) return { ...a, ...b, name: a.name || b.name };
+    return { ...b, ...a, name: a.name || b.name };
+  });
+
+  state.checkCalls = mergeListByNameKey(state.checkCalls, (d) => d.driver, (a, b) => {
+    const dateA = normalizeDateInput(a.lastCheckCall);
+    const dateB = normalizeDateInput(b.lastCheckCall);
+    const keepB = isValidDate(dateB) && (!isValidDate(dateA) || new Date(dateB) > new Date(dateA));
+    return keepB ? { ...a, ...b } : { ...b, ...a };
+  }).map((c) => ({ ...c, driver: resolveCanonicalDriverName(c.driver) }));
+
+  state.discipline = mergeListByNameKey(state.discipline, (d) => d.driver, (a, b) => {
+    const dateA = normalizeDateInput(a.startDate);
+    const dateB = normalizeDateInput(b.startDate);
+    const keepB = isValidDate(dateB) && (!isValidDate(dateA) || new Date(dateB) > new Date(dateA));
+    return keepB ? { ...a, ...b } : { ...b, ...a };
+  }).map((d) => ({ ...d, driver: resolveCanonicalDriverName(d.driver) }));
+
+  state.kwenTracker = mergeListByNameKey(state.kwenTracker, (d) => d.driver, (a, b) => {
+    const dateA = normalizeDateInput(a.lastCheckCall);
+    const dateB = normalizeDateInput(b.lastCheckCall);
+    const keepB = isValidDate(dateB) && (!isValidDate(dateA) || new Date(dateB) > new Date(dateA));
+    return keepB ? { ...a, ...b } : { ...b, ...a };
+  }).map((row) => ({ ...row, driver: resolveCanonicalDriverName(row.driver) }));
+
+  if (Array.isArray(state.safetyVideos?.pending)) {
+    const dedupPending = [];
+    const seenPending = new Set();
+    state.safetyVideos.pending.forEach((p) => {
+      const canonDriver = resolveCanonicalDriverName(p.driver);
+      const key = safetyVideoKey(canonDriver, p.team);
+      if (seenPending.has(key)) return;
+      seenPending.add(key);
+      dedupPending.push({ ...p, driver: canonDriver });
+    });
+    state.safetyVideos.pending = dedupPending;
+  }
+
+  if (Array.isArray(state.safetyVideos?.followUps)) {
+    const dedupFollow = [];
+    const seenFollow = new Set();
+    state.safetyVideos.followUps.forEach((f) => {
+      const canonDriver = resolveCanonicalDriverName(f.driver);
+      const key = safetyVideoKey(canonDriver, f.team);
+      if (seenFollow.has(key)) return;
+      seenFollow.add(key);
+      dedupFollow.push({ ...f, driver: canonDriver, key });
+    });
+    state.safetyVideos.followUps = dedupFollow;
+  }
+
+  if (Array.isArray(state.compliance?.cases)) {
+    state.compliance.cases = state.compliance.cases.map((c) => ({ ...c, driver: resolveCanonicalDriverName(c.driver) }));
+  }
+  if (Array.isArray(state.compliance?.repeatOffenders)) {
+    state.compliance.repeatOffenders = state.compliance.repeatOffenders.map((r) => ({ ...r, driver: resolveCanonicalDriverName(r.driver) }));
+  }
+  if (Array.isArray(state.empathy?.active)) {
+    state.empathy.active = state.empathy.active.map((r) => ({ ...r, driver: resolveCanonicalDriverName(r.driver) }));
+  }
+  if (Array.isArray(state.empathy?.history)) {
+    state.empathy.history = state.empathy.history.map((r) => ({ ...r, driver: resolveCanonicalDriverName(r.driver) }));
+  }
+  if (Array.isArray(state.callActivity)) {
+    state.callActivity = state.callActivity.map((c) => ({ ...c, driver: resolveCanonicalDriverName(c.driver) }));
+  }
+
+  const afterCount =
+    state.drivers.length +
+    state.checkCalls.length +
+    state.discipline.length +
+    state.kwenTracker.length +
+    (state.compliance?.cases?.length || 0) +
+    (state.compliance?.repeatOffenders?.length || 0) +
+    (state.empathy?.active?.length || 0) +
+    (state.empathy?.history?.length || 0) +
+    (state.callActivity?.length || 0) +
+    (state.safetyVideos?.pending?.length || 0) +
+    (state.safetyVideos?.followUps?.length || 0);
+  const merged = Math.max(0, beforeCount - afterCount);
+
+  if (!silent) {
+    saveState();
+    renderAll();
+    setSyncStatus(`Deduplication complete. Merged ${merged} duplicate records across drivers, calls, discipline, and tracker rows.`);
+  }
+  return { merged };
+}
+
+async function importCsvFile(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  try {
+    const lowerName = file.name.toLowerCase();
+    let records = [];
+
+    if (lowerName.endsWith(".xlsx") || lowerName.endsWith(".xls")) {
+      if (typeof XLSX === "undefined") {
+        setSyncStatus("Excel parser not loaded. Refresh page and try again.");
+        return;
+      }
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: "array" });
+      const bestSheetRows = pickBestWorksheetRows(workbook);
+      records = rowsToObjects(bestSheetRows);
+    } else {
+      const text = await file.text();
+      const rows = parseCsv(text);
+      records = rowsToObjects(rows);
+    }
+
+    if (!records.length) {
+      setSyncStatus("Import failed: no data rows found.");
+      return;
+    }
+    let importedRows = 0;
+    let importedDrivers = 0;
+    let importedCalls = 0;
+    let importedDiscipline = 0;
+
+    for (const record of records) {
+      const name = pickValue(record, ["driver name", "driver", "name", "employee", "driver/employee"]);
+      if (!name) continue;
+      importedRows += 1;
+
+      const scoreRaw = pickValue(record, ["safety score", "score", "samsara score"]);
+      const safetyScore = Number(scoreRaw);
+      const driverResult = upsertDriver(name, Number.isFinite(safetyScore) ? safetyScore : null);
+      if (driverResult?.created) importedDrivers += 1;
+
+      const lastCall = normalizeDateInput(
+        pickValue(record, [
+          "last check call date",
+          "last check call",
+          "last_check_call",
+          "check call date",
+          "last call",
+          "last called",
+          "date last called"
+        ])
+      );
+      const daysPassedRaw = pickValue(record, ["days passed since last check call", "days passed", "days since"]);
+      const executedBy = pickValue(record, ["fmt/fmtm who executed", "fmt fmtm who executed", "fmt", "fmtm", "who executed"]);
+      const statusRaw = pickValue(record, ["status", "priority", "call status", "discipline status", "disciplinary status"]);
+      upsertKwenTracker(name, lastCall, executedBy, daysPassedRaw, statusRaw || "Current");
+
+      if (lastCall) {
+        upsertCheckCall(name, lastCall);
+        importedCalls += 1;
+      }
+
+      const levelText = pickValue(record, ["discipline level", "level", "disciplinary level"]);
+      const levelMatch = levelText.match(/\d+/);
+      const levelRaw = Number(levelMatch ? levelMatch[0] : levelText);
+      const disciplineStatusRaw = pickValue(record, ["discipline status", "disciplinary status"]);
+      const status = disciplineStatusRaw || (isDisciplineStatus(statusRaw) ? statusRaw : "");
+      const startDate = normalizeDateInput(pickValue(record, ["discipline start", "start date", "start"]));
+      const endDate = normalizeDateInput(pickValue(record, ["discipline end", "end date", "end"]));
+      if (isDisciplineStatus(status)) {
+        upsertDiscipline(name, levelRaw, status, startDate, endDate);
+        importedDiscipline += 1;
+      }
+    }
+
+    const dedupeCounts = dedupeDriverData({ silent: true });
+
+    saveState();
+    renderAll();
+    setSyncStatus(
+      `Import complete. Rows: ${importedRows}, new drivers: ${importedDrivers}, check calls: ${importedCalls}, discipline updates: ${importedDiscipline}, duplicates merged: ${dedupeCounts.merged}.`
+    );
+  } catch (error) {
+    setSyncStatus(`Import failed: ${error.message || "unknown error"}`);
+  } finally {
+    event.target.value = "";
+  }
+}
+
+async function importCheckCallWorkbook(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  try {
+    const lowerName = file.name.toLowerCase();
+    if (!(lowerName.endsWith(".xlsx") || lowerName.endsWith(".xls"))) {
+      setSyncStatus("Check call import requires an .xlsx/.xls workbook.");
+      return;
+    }
+    if (typeof XLSX === "undefined") {
+      setSyncStatus("Excel parser not loaded. Refresh page and try again.");
+      return;
+    }
+
+    const buffer = await file.arrayBuffer();
+    const workbook = XLSX.read(buffer, { type: "array" });
+    const freqSheet = workbook.Sheets["Driver Check Call Frequency"];
+    const weeklySheet = workbook.Sheets["WEEKLY CHECK CALL COUNT"];
+    if (!freqSheet) {
+      setSyncStatus("Workbook missing 'Driver Check Call Frequency' sheet.");
+      return;
+    }
+
+    const freqRows = XLSX.utils.sheet_to_json(freqSheet, { defval: "" });
+    let importedDrivers = 0;
+    let importedCalls = 0;
+    let importedFreq = 0;
+
+    freqRows.forEach((row) => {
+      const name = String(row["Driver Name:"] || row["Driver Name"] || "").trim();
+      if (!name) return;
+      const lastCheckCall = normalizeDateInput(row["Last Check Call Date"]);
+      const calledBy = String(row["FMT/FMTM who executed"] || "").trim();
+      const daysRaw = Number(row["Days passed since last check call"]);
+      const status = String(row["Status"] || "").trim() || (Number.isFinite(daysRaw) && daysRaw >= 7 ? "HIGH PRIORITY" : "Current");
+      const before = state.drivers.length;
+      upsertDriver(name, null);
+      if (state.drivers.length > before) importedDrivers += 1;
+      if (lastCheckCall) {
+        upsertCheckCall(name, lastCheckCall, calledBy);
+        if (calledBy) addCallActivity(name, calledBy, lastCheckCall);
+        importedCalls += 1;
+      }
+      upsertKwenTracker(name, lastCheckCall, calledBy, Number.isFinite(daysRaw) ? daysRaw : "", status);
+      importedFreq += 1;
+    });
+
+    let weeklyBatches = [];
+    if (weeklySheet) {
+      const weeklyRows = XLSX.utils.sheet_to_json(weeklySheet, { header: 1, defval: "" });
+      weeklyBatches = parseWeeklyCountSheet(weeklyRows);
+    }
+    state.checkCallOps = {
+      importedAt: new Date().toISOString(),
+      weeklyBatches
+    };
+    selectedWeeklyBatchIndex = 0;
+    dedupeDriverData({ silent: true });
+    saveState();
+    renderAll();
+    const importedAtText = state.checkCallOps.importedAt ? new Date(state.checkCallOps.importedAt).toLocaleString() : "";
+    setCheckCallOpsStatus(
+      `Check call workbook import complete (${importedAtText}). Frequency rows: ${importedFreq}, new drivers: ${importedDrivers}, call updates: ${importedCalls}, weekly sets: ${weeklyBatches.length}.`
+    );
+    setSyncStatus("Check call workbook imported successfully.");
+  } catch (error) {
+    setSyncStatus(`Check call workbook import failed: ${error.message || "unknown error"}`);
+  } finally {
+    event.target.value = "";
+  }
+}
+
+async function importSafetyVideosWorkbook(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  try {
+    const lowerName = file.name.toLowerCase();
+    if (!(lowerName.endsWith(".xlsx") || lowerName.endsWith(".xls"))) {
+      setSyncStatus("Safety video import requires an .xlsx/.xls workbook.");
+      return;
+    }
+    if (typeof XLSX === "undefined") {
+      setSyncStatus("Excel parser not loaded. Refresh page and try again.");
+      return;
+    }
+
+    const buffer = await file.arrayBuffer();
+    const workbook = XLSX.read(buffer, { type: "array" });
+    const otrRows = worksheetRows(workbook, "OTR - Follow Up");
+    const ag4Rows = worksheetRows(workbook, "AG4 - Follow Up");
+    const ajgAuditRows = worksheetRows(workbook, "(AJG) Completion Auditing");
+    const ag4AuditRows = worksheetRows(workbook, "(AG4) Completion Auditing");
+
+    const pendingRaw = [...parseFollowUpSheet(otrRows, "OTR"), ...parseFollowUpSheet(ag4Rows, "AG4")];
+    const pendingMap = new Map();
+    pendingRaw.forEach((row) => {
+      const key = `${normalizeNameKey(row.driver)}::${row.team}`;
+      if (!key.startsWith("::")) pendingMap.set(key, row);
+      upsertDriver(row.driver, null);
+    });
+    const pending = [...pendingMap.values()];
+
+    const courseAudit = [
+      ...parseCompletionAuditSheet(ajgAuditRows, "AJG"),
+      ...parseCompletionAuditSheet(ag4AuditRows, "AG4")
+    ];
+
+    const oldFollowUps = Array.isArray(state.safetyVideos?.followUps) ? state.safetyVideos.followUps : [];
+    const followMap = new Map(oldFollowUps.map((f) => [f.key, f]));
+    const followUps = pending.map((row) => {
+      const key = safetyVideoKey(row.driver, row.team);
+      const existing = followMap.get(key);
+      return (
+        existing || {
+          id: crypto.randomUUID(),
+          key,
+          driver: row.driver,
+          team: row.team,
+          called: false,
+          lastCalled: null,
+          nextFollowUp: null
+        }
+      );
+    });
+
+    state.safetyVideos = {
+      importedAt: new Date().toISOString(),
+      pending,
+      courseAudit,
+      followUps
+    };
+    dedupeDriverData({ silent: true });
+
+    saveState();
+    renderAll();
+    setSyncStatus(
+      `Safety videos import complete. Pending drivers: ${pending.length}, course audits: ${courseAudit.length}.`
+    );
+  } catch (error) {
+    setSyncStatus(`Safety videos import failed: ${error.message || "unknown error"}`);
+  } finally {
+    event.target.value = "";
+  }
+}
+
+function asRowArray(sheet) {
+  return XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+}
+
+function asObjectRows(sheet) {
+  return XLSX.utils.sheet_to_json(sheet, { defval: "" });
+}
+
+function formatSheetDate(value) {
+  const d = normalizeDateInput(value);
+  return d || String(value || "").trim();
+}
+
+async function importComplianceWorkbook(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  try {
+    const lowerName = file.name.toLowerCase();
+    if (!(lowerName.endsWith(".xlsx") || lowerName.endsWith(".xls"))) {
+      setSyncStatus("Compliance import requires an .xlsx/.xls workbook.");
+      return;
+    }
+    if (typeof XLSX === "undefined") {
+      setSyncStatus("Excel parser not loaded. Refresh page and try again.");
+      return;
+    }
+
+    const buffer = await file.arrayBuffer();
+    const workbook = XLSX.read(buffer, { type: "array" });
+    const summaryRows = asRowArray(workbook.Sheets["Executive Summary"] || workbook.Sheets[workbook.SheetNames[0]]);
+    const allCaseRows = asObjectRows(workbook.Sheets["All Driver Cases"] || workbook.Sheets[workbook.SheetNames[1]]);
+    const repeatRows = asObjectRows(workbook.Sheets["Repeat Offenders - Priority"] || workbook.Sheets[workbook.SheetNames[2]]);
+
+    const executiveMetrics = [];
+    summaryRows.forEach((r) => {
+      const k = String(r[0] || "").trim();
+      const v = String(r[1] || "").trim();
+      if (k && v && !k.toLowerCase().includes("category")) executiveMetrics.push({ label: k, value: v });
+    });
+
+    const existingMap = new Map((state.compliance.cases || []).map((c) => [String(c.caseNo || "").toLowerCase(), c]));
+    const parsedCases = [];
+    allCaseRows.forEach((r) => {
+      const driver = String(r["Driver Name"] || "").trim();
+      const caseNo = String(r["Case #"] || "").trim();
+      if (!driver || !caseNo) return;
+      const existing = existingMap.get(caseNo.toLowerCase());
+      const payload = {
+        id: existing?.id || crypto.randomUUID(),
+        driver,
+        caseNo,
+        reportDate: formatSheetDate(r["Report Date"]),
+        incidentDate: formatSheetDate(r["Incident Date"]),
+        nature: String(r["Nature"] || "").trim(),
+        description: String(r["Description"] || "").trim(),
+        reporter: String(r["Reporter"] || "").trim(),
+        vehicle: String(r["Vehicle"] || "").trim(),
+        actionsTaken: String(r["Actions Taken"] || "").trim(),
+        notes: String(r["Notes"] || "").trim(),
+        completed: Boolean(existing?.completed),
+        completedAt: existing?.completedAt || null,
+        needsFollowUp: existing ? !existing.completed : true,
+        lastCheckCall: existing?.lastCheckCall || null
+      };
+      parsedCases.push(payload);
+      upsertDriver(driver, null);
+    });
+
+    const repeatOffenders = repeatRows
+      .map((r) => ({
+        id: crypto.randomUUID(),
+        driver: String(r["Driver Name"] || "").trim(),
+        totalCases: Number(r["Total Cases"] || 0) || 0,
+        firstIncident: formatSheetDate(r["First Incident"]),
+        latestIncident: formatSheetDate(r["Latest Incident"]),
+        incidentTypes: String(r["Incident Types"] || "").trim(),
+        summary: String(r["Summary"] || "").trim()
+      }))
+      .filter((r) => r.driver);
+
+    state.compliance = {
+      importedAt: new Date().toISOString(),
+      executiveMetrics,
+      cases: parsedCases,
+      repeatOffenders
+    };
+    dedupeDriverData({ silent: true });
+
+    saveState();
+    renderAll();
+    setSyncStatus(`Compliance import complete. Cases: ${parsedCases.length}, repeat offenders: ${repeatOffenders.length}.`);
+  } catch (error) {
+    setSyncStatus(`Compliance import failed: ${error.message || "unknown error"}`);
+  } finally {
+    event.target.value = "";
+  }
+}
+
+async function importAddendumDocx(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  try {
+    const lowerName = file.name.toLowerCase();
+    if (!lowerName.endsWith(".docx")) {
+      setSyncStatus("Addendum import requires a .docx file.");
+      return;
+    }
+    if (typeof mammoth === "undefined") {
+      setSyncStatus("DOCX parser not loaded. Refresh page and try again.");
+      return;
+    }
+
+    const buffer = await file.arrayBuffer();
+    const result = await mammoth.extractRawText({ arrayBuffer: buffer });
+    const paragraphs = String(result.value || "")
+      .split(/\n+/)
+      .map((p) => p.trim())
+      .filter(Boolean);
+
+    state.addendum = {
+      ...state.addendum,
+      importedAt: new Date().toISOString(),
+      paragraphs
+    };
+    saveState();
+    renderAll();
+    setSyncStatus(`Addendum import complete. Paragraphs loaded: ${paragraphs.length}.`);
+  } catch (error) {
+    setSyncStatus(`Addendum import failed: ${error.message || "unknown error"}`);
+  } finally {
+    event.target.value = "";
+  }
+}
+
+async function syncSamsaraDrivers() {
+  const token = (document.getElementById("samsaraToken").value || "").trim();
+  if (!token) {
+    setSyncStatus("Add a Samsara API token first.");
+    return;
+  }
+
+  setSyncStatus("Syncing drivers from Samsara...");
+  let drivers;
+  try {
+    const response = await fetch("/api/samsara/drivers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token })
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+    drivers = Array.isArray(payload.drivers) ? payload.drivers : [];
+  } catch (error) {
+    setSyncStatus(`Samsara sync failed: ${error.message || "proxy request error"}.`);
+    return;
+  }
+
+  let added = 0;
+  drivers.forEach((d) => {
+    const name = d.name || d.driverName || d.username || "";
+    if (!name) return;
+    const score = Number(d.safetyScore ?? d.safety_score ?? d.score);
+    const result = upsertDriver(name, Number.isFinite(score) ? score : null);
+    if (result?.created) added += 1;
+  });
+
+  dedupeDriverData({ silent: true });
+
+  saveState();
+  renderAll();
+  setSyncStatus(`Samsara sync complete. Retrieved: ${drivers.length}, new drivers added: ${added}.`);
+}
+
+</script>
+  </body>
+</html>
