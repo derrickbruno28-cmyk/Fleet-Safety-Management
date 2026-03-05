@@ -30,6 +30,8 @@ const pool = dbEnabled
   : null;
 
 let memoryState = {};
+let lastStateWriteAt = null;
+const presenceSessions = new Map();
 
 function sendJson(res, status, payload) {
   res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
@@ -83,6 +85,7 @@ async function getAppState() {
 async function putAppState(nextState) {
   if (!dbEnabled) {
     memoryState = nextState || {};
+    lastStateWriteAt = new Date().toISOString();
     return;
   }
   await pool.query(
@@ -94,6 +97,16 @@ async function putAppState(nextState) {
     `,
     [JSON.stringify(nextState || {})]
   );
+  lastStateWriteAt = new Date().toISOString();
+}
+
+function cleanupPresenceSessions() {
+  const now = Date.now();
+  for (const [sessionId, meta] of presenceSessions.entries()) {
+    if (!meta || !meta.lastSeenAt || now - meta.lastSeenAt > 35_000) {
+      presenceSessions.delete(sessionId);
+    }
+  }
 }
 
 async function runHourlyMaintenance() {
@@ -216,6 +229,33 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === "GET" && urlObj.pathname === "/api/health") {
     sendJson(res, 200, { ok: true, dbEnabled, now: new Date().toISOString() });
+    return;
+  }
+
+  if (req.method === "POST" && urlObj.pathname === "/api/presence/heartbeat") {
+    try {
+      const raw = await readBody(req);
+      const parsed = raw ? JSON.parse(raw) : {};
+      const sessionId =
+        typeof parsed.sessionId === "string" && parsed.sessionId.trim()
+          ? parsed.sessionId.trim()
+          : `anon_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      presenceSessions.set(sessionId, { lastSeenAt: Date.now() });
+      cleanupPresenceSessions();
+      sendJson(res, 200, { ok: true });
+    } catch (error) {
+      sendJson(res, 400, { error: error.message || "heartbeat failed" });
+    }
+    return;
+  }
+
+  if (req.method === "GET" && urlObj.pathname === "/api/presence/status") {
+    cleanupPresenceSessions();
+    sendJson(res, 200, {
+      onlineUsers: presenceSessions.size || 1,
+      lastStateWriteAt,
+      lastSavedAt: lastStateWriteAt
+    });
     return;
   }
 

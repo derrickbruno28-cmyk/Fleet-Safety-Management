@@ -53,6 +53,44 @@ body {
   z-index: 20;
 }
 
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.live-pill {
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text2);
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-family: var(--mono);
+  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.live-pill b {
+  color: var(--text);
+}
+
+.live-pill.live {
+  border-color: rgba(16, 185, 129, 0.45);
+  color: var(--green);
+}
+
+.live-pill.syncing {
+  border-color: rgba(245, 158, 11, 0.45);
+  color: var(--yellow);
+}
+
+.live-pill.offline {
+  border-color: rgba(239, 68, 68, 0.45);
+  color: var(--red);
+}
+
 .brand h1 {
   font-family: var(--mono);
   font-size: 13px;
@@ -634,6 +672,9 @@ select option {
         <p>Centralized safety operations dashboard</p>
       </div>
       <div class="topbar-actions">
+        <div id="liveSyncPill" class="live-pill syncing">● <b>Syncing</b></div>
+        <div id="liveUsersPill" class="live-pill">Users: <b>1</b></div>
+        <div id="lastSavedPill" class="live-pill">Last Saved: <b>—</b></div>
         <button id="seedDataBtn" class="btn ghost">Load Sample Data</button>
       </div>
     </header>
@@ -1167,10 +1208,17 @@ const levelLabels = {
 };
 
 const STATE_API_URL = "/api/state";
+const PRESENCE_HEARTBEAT_URL = "/api/presence/heartbeat";
+const PRESENCE_STATUS_URL = "/api/presence/status";
 let state = structuredClone(initialState);
 let persistStateTimer = null;
 let persistStateInFlight = false;
 let pendingServerStateWrite = false;
+const presenceSessionId = (window.crypto && crypto.randomUUID)
+  ? crypto.randomUUID()
+  : `sess_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+let presenceHeartbeatTimer = null;
+let presenceStatusTimer = null;
 const safetyVideosView = {
   team: "all",
   minPending: 0,
@@ -1207,6 +1255,7 @@ async function initApp() {
   bindUI();
   loadSavedSettings();
   await syncStateFromServer();
+  startPresenceTracking();
 }
 
 function hydrateState(parsed) {
@@ -1296,13 +1345,16 @@ async function flushServerStateSave() {
   persistStateInFlight = true;
   pendingServerStateWrite = false;
   try {
+    setLiveSyncState("syncing", "Syncing");
     await fetch(STATE_API_URL, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ state })
     });
+    setLiveSyncState("live", "Live");
   } catch (_) {
     // keep local even if remote unavailable
+    setLiveSyncState("offline", "Offline");
   } finally {
     persistStateInFlight = false;
     if (pendingServerStateWrite) flushServerStateSave();
@@ -1312,6 +1364,72 @@ async function flushServerStateSave() {
 function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   queueServerStateSave();
+}
+
+function setLiveSyncState(mode, label) {
+  const el = document.getElementById("liveSyncPill");
+  if (!el) return;
+  el.classList.remove("live", "syncing", "offline");
+  if (mode) el.classList.add(mode);
+  el.innerHTML = `● <b>${label || "Live"}</b>`;
+}
+
+function setLiveUsers(count) {
+  const el = document.getElementById("liveUsersPill");
+  if (!el) return;
+  const n = Number.isFinite(Number(count)) ? Number(count) : 1;
+  el.innerHTML = `Users: <b>${n}</b>`;
+}
+
+function formatSavedTime(ts) {
+  if (!ts) return "—";
+  const d = new Date(ts);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
+function setLastSaved(ts) {
+  const el = document.getElementById("lastSavedPill");
+  if (!el) return;
+  el.innerHTML = `Last Saved: <b>${formatSavedTime(ts)}</b>`;
+}
+
+async function sendPresenceHeartbeat() {
+  try {
+    await fetch(PRESENCE_HEARTBEAT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId: presenceSessionId })
+    });
+  } catch (_) {}
+}
+
+async function refreshPresenceStatus() {
+  try {
+    const res = await fetch(PRESENCE_STATUS_URL, { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const payload = await res.json();
+    setLiveUsers(payload.onlineUsers || 1);
+    setLastSaved(payload.lastStateWriteAt || payload.lastSavedAt || null);
+    setLiveSyncState("live", "Live");
+  } catch (_) {
+    setLiveSyncState("offline", "Offline");
+  }
+}
+
+function startPresenceTracking() {
+  if (presenceHeartbeatTimer) clearInterval(presenceHeartbeatTimer);
+  if (presenceStatusTimer) clearInterval(presenceStatusTimer);
+  sendPresenceHeartbeat();
+  refreshPresenceStatus();
+  presenceHeartbeatTimer = setInterval(sendPresenceHeartbeat, 15000);
+  presenceStatusTimer = setInterval(refreshPresenceStatus, 10000);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) {
+      sendPresenceHeartbeat();
+      refreshPresenceStatus();
+    }
+  });
 }
 
 function bindUI() {
