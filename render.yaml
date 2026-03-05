@@ -32,6 +32,6 @@ services:
 
 databases:
   - name: fleet-safety-db
-    plan: starter
+    plan: basic-256mb
     databaseName: fleet_safety
     user: fleet_safety_user
