@@ -668,8 +668,14 @@
     <div class="cond-block" id="inc-accident-block">
       <div class="modal-sec-title">Accident Details</div>
       <div class="form-grid">
-        <div><label>Were police called to the scene?</label><select id="inc-police"><option>No</option><option>Yes</option><option>Unknown</option></select></div>
-        <div><label>Police / Report Case # (if applicable)</label><input type="text" id="inc-police-case" placeholder="Police Case or Report #"></div>
+        <div><label>Were police called to the scene?</label><select id="inc-police" onchange="togglePoliceDetails()"><option>No</option><option>Yes</option><option>Unknown</option></select></div>
+      </div>
+      <div class="cond-block" id="inc-police-details">
+        <div class="form-grid">
+          <div><label>Police / Report Case #</label><input type="text" id="inc-police-case" placeholder="Police Case or Report #"></div>
+          <div><label>Officer Name</label><input type="text" id="inc-police-officer" placeholder="Officer full name"></div>
+          <div><label>Officer Badge #</label><input type="text" id="inc-police-badge" placeholder="Badge number"></div>
+        </div>
       </div>
     </div>
 
@@ -1467,7 +1473,6 @@ function saveNewTask(){
   renderCompletedEmpty();
 }
 buildTasks();
-startSharedStateSync();
 
 // ── CARRIER TABS ──
 let activeCarrier='all';
@@ -1493,6 +1498,18 @@ function toggleIncidentFields(){
   document.getElementById('inc-cit-block').classList.toggle('show',t==='Citation'||t==='Violation');
   document.getElementById('inc-dot-block').classList.toggle('show',t==='DOT Inspection');
   document.getElementById('inc-camera-block').classList.toggle('show',t==='Camera Safety Event');
+  if(t!=='Accident'){
+    const block=document.getElementById('inc-police-details');
+    if(block)block.classList.remove('show');
+  }else{
+    togglePoliceDetails();
+  }
+}
+function togglePoliceDetails(){
+  const policeSel=document.getElementById('inc-police');
+  const block=document.getElementById('inc-police-details');
+  if(!policeSel||!block)return;
+  block.classList.toggle('show',policeSel.value==='Yes');
 }
 toggleIncidentFields();
 async function uploadIncidentMediaFiles(files){
@@ -1530,7 +1547,15 @@ async function saveIncident(){
   if(!driver){alert('Please enter a driver name.');return;}
   let ref='',extra={};
   const summary=document.getElementById('inc-desc').value.trim();
-  if(type==='Accident'){extra={police:document.getElementById('inc-police').value,policeCase:document.getElementById('inc-police-case').value};ref=extra.policeCase||'—';}
+  if(type==='Accident'){
+    extra={
+      police:document.getElementById('inc-police').value,
+      policeCase:document.getElementById('inc-police-case').value,
+      policeOfficer:document.getElementById('inc-police-officer').value,
+      policeBadge:document.getElementById('inc-police-badge').value
+    };
+    ref=extra.policeCase||'—';
+  }
   else if(type==='Citation'||type==='Violation'){extra={citNum:document.getElementById('inc-cit-num').value,citAgency:document.getElementById('inc-cit-agency').value};ref=extra.citNum||'—';}
   else if(type==='DOT Inspection'){extra={dotPass:document.getElementById('inc-dot-pass').value,dotLevel:document.getElementById('inc-dot-level').value,dotViolations:document.getElementById('inc-dot-violations').value};ref=extra.dotLevel;}
   else if(type==='Camera Safety Event'){extra={camTruck:document.getElementById('inc-cam-truck').value,camTime:document.getElementById('inc-cam-time').value,camType:document.getElementById('inc-cam-type').value};ref=extra.camTruck?'Unit:'+extra.camTruck:'—';}
@@ -1550,8 +1575,11 @@ async function saveIncident(){
   incMap[type]=(incMap[type]||0)+1;
   updateOvStats();renderIncidentLog();
   closeModal('modal-log-incident');
-  ['inc-date','inc-driver','inc-desc','inc-police-case','inc-cit-num','inc-cit-agency','inc-dot-violations','inc-cam-truck','inc-cam-time','inc-truck','inc-trailer','inc-customer','inc-loadnum'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['inc-date','inc-driver','inc-desc','inc-police-case','inc-police-officer','inc-police-badge','inc-cit-num','inc-cit-agency','inc-dot-violations','inc-cam-truck','inc-cam-time','inc-truck','inc-trailer','inc-customer','inc-loadnum'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   if(mediaInput)mediaInput.value='';
+  const policeSel=document.getElementById('inc-police');
+  if(policeSel)policeSel.value='No';
+  togglePoliceDetails();
   document.getElementById('inc-loaded').value='no';
   document.getElementById('inc-load-block').classList.remove('show');
   document.getElementById('inc-thirdparty').value='none';
@@ -1566,7 +1594,7 @@ function renderIncidentLog(){
     const i=incidents.indexOf(inc);
     const tc=inc.type==='Accident'?'badge-red':inc.type==='DOT Inspection'?'badge-blue':inc.type==='Camera Safety Event'?'badge-teal':'badge-gold';
     let extra='';
-    if(inc.type==='Accident'&&inc.extra)extra=`<div style="font-size:16px;color:var(--text-muted);">Police: ${inc.extra.police||'No'}${inc.extra.policeCase?' · Case#: '+inc.extra.policeCase:''}</div>`;
+    if(inc.type==='Accident'&&inc.extra)extra=`<div style="font-size:16px;color:var(--text-muted);">Police: ${inc.extra.police||'No'}${inc.extra.policeCase?' · Case#: '+inc.extra.policeCase:''}${inc.extra.policeOfficer?' · Officer: '+inc.extra.policeOfficer:''}${inc.extra.policeBadge?' · Badge#: '+inc.extra.policeBadge:''}</div>`;
     if(inc.type==='DOT Inspection'&&inc.extra)extra=`<div style="font-size:16px;color:${inc.extra.dotPass&&inc.extra.dotPass.includes('Pass')?'var(--accent-green)':'var(--accent-red)'};">${inc.extra.dotPass||''}</div>`;
     if(inc.type==='Camera Safety Event'&&inc.extra)extra=`<div style="font-size:16px;color:var(--text-muted);">Unit: ${inc.extra.camTruck||'—'} · ${inc.extra.camTime||''} · ${inc.extra.camType||''}</div>`;
     if((inc.type==='Citation'||inc.type==='Violation')&&inc.extra)extra=`<div style="font-size:16px;color:var(--text-muted);">Ref#: ${inc.extra.citNum||'—'}${inc.extra.citAgency?' · '+inc.extra.citAgency:''}</div>`;
@@ -2565,7 +2593,10 @@ function updateCSAChart(){
   });
 }
 // Init empty chart
-document.addEventListener('DOMContentLoaded',()=>updateCSAChart());
+document.addEventListener('DOMContentLoaded',()=>{
+  updateCSAChart();
+  startSharedStateSync();
+});
 
 </script>
 <!-- CASE DETAIL VIEW MODAL -->
