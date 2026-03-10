@@ -1044,6 +1044,7 @@ document.querySelectorAll('.modal-overlay').forEach(m=>{
 
 // ── SHARED STATE SYNC ──
 const SHARED_STATE_API='/api/state';
+const LOCAL_STATE_BACKUP_KEY='fleet_safety_last_snapshot';
 let sharedSyncBusy=false;
 let lastSharedSig='';
 
@@ -1179,9 +1180,10 @@ async function pushSharedState(){
       remote=j&&j.state?j.state:{};
     }catch(_){}
     const merged=mergeSnapshots(local,remote);
-    await fetch(SHARED_STATE_API,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({state:merged})});
+    await fetch(SHARED_STATE_API,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({state:merged,source:'web-client'})});
     const sig=JSON.stringify(merged);
     lastSharedSig=sig;
+    try{localStorage.setItem(LOCAL_STATE_BACKUP_KEY,sig);}catch(_){}
   }catch(_){}
   sharedSyncBusy=false;
 }
@@ -1198,6 +1200,7 @@ async function pullSharedState(){
     if(sig!==lastSharedSig){
       lastSharedSig=sig;
       applySharedSnapshot(merged);
+      try{localStorage.setItem(LOCAL_STATE_BACKUP_KEY,sig);}catch(_){}
     }
   }catch(_){}
 }
@@ -1205,7 +1208,19 @@ async function pullSharedState(){
 function startSharedStateSync(){
   const initial=buildSharedSnapshot();
   lastSharedSig=JSON.stringify(initial);
+  try{localStorage.setItem(LOCAL_STATE_BACKUP_KEY,lastSharedSig);}catch(_){}
   pullSharedState();
+  // If API is temporarily unavailable, recover from latest local backup.
+  if(!lastSharedSig || lastSharedSig==='{}'){
+    try{
+      const backupRaw=localStorage.getItem(LOCAL_STATE_BACKUP_KEY);
+      if(backupRaw){
+        const backup=JSON.parse(backupRaw);
+        applySharedSnapshot(backup);
+        lastSharedSig=backupRaw;
+      }
+    }catch(_){}
+  }
   setInterval(()=>{
     const nowSig=JSON.stringify(buildSharedSnapshot());
     if(nowSig!==lastSharedSig){

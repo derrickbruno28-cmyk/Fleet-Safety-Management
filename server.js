@@ -83,6 +83,15 @@ async function ensureDb() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS app_state_history (
+      id BIGSERIAL PRIMARY KEY,
+      source TEXT NOT NULL DEFAULT 'unknown',
+      state JSONB NOT NULL,
+      state_updated_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
 }
 
 async function getAppState() {
@@ -92,21 +101,51 @@ async function getAppState() {
   return rows[0].data || {};
 }
 
-async function putAppState(nextState) {
+async function putAppState(nextState, source = "unknown") {
   if (!dbEnabled) {
     memoryState = nextState || {};
     lastStateWriteAt = new Date().toISOString();
     return;
   }
-  await pool.query(
-    `
-      INSERT INTO app_state (id, data, updated_at)
-      VALUES (1, $1::jsonb, NOW())
-      ON CONFLICT (id)
-      DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()
-    `,
-    [JSON.stringify(nextState || {})]
-  );
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const curRes = await client.query("SELECT data, updated_at FROM app_state WHERE id = 1 FOR UPDATE");
+    if (curRes.rows.length) {
+      const cur = curRes.rows[0];
+      await client.query(
+        `
+          INSERT INTO app_state_history (source, state, state_updated_at)
+          VALUES ($1, $2::jsonb, $3)
+        `,
+        [source, JSON.stringify(cur.data || {}), cur.updated_at || null]
+      );
+    }
+    await client.query(
+      `
+        INSERT INTO app_state (id, data, updated_at)
+        VALUES (1, $1::jsonb, NOW())
+        ON CONFLICT (id)
+        DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()
+      `,
+      [JSON.stringify(nextState || {})]
+    );
+    // Keep only the most recent 500 state backups.
+    await client.query(`
+      DELETE FROM app_state_history
+      WHERE id IN (
+        SELECT id FROM app_state_history
+        ORDER BY created_at DESC
+        OFFSET 500
+      )
+    `);
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
   lastStateWriteAt = new Date().toISOString();
 }
 
@@ -136,7 +175,7 @@ async function runHourlyMaintenance() {
     state.system.lastHourlyCronRun = nowIso;
     state.system.lastHourlyCronSummary = result;
   }
-  await putAppState(state);
+  await putAppState(state, "hourly-cron");
 
   if (dbEnabled) {
     await pool.query(
@@ -285,7 +324,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "GET" && urlObj.pathname === "/api/state") {
     try {
       const state = await getAppState();
-      sendJson(res, 200, { state });
+      sendJson(res, 200, { state, lastSavedAt: lastStateWriteAt });
     } catch (error) {
       sendJson(res, 500, { error: error.message || "state read failed" });
     }
@@ -297,10 +336,67 @@ const server = http.createServer(async (req, res) => {
       const raw = await readBody(req);
       const parsed = raw ? JSON.parse(raw) : {};
       const state = parsed && typeof parsed.state === "object" ? parsed.state : {};
-      await putAppState(state);
-      sendJson(res, 200, { ok: true });
+      const source =
+        parsed && typeof parsed.source === "string" && parsed.source.trim()
+          ? parsed.source.trim().slice(0, 120)
+          : "web-client";
+      await putAppState(state, source);
+      sendJson(res, 200, { ok: true, lastSavedAt: lastStateWriteAt });
     } catch (error) {
       sendJson(res, 500, { error: error.message || "state write failed" });
+    }
+    return;
+  }
+
+  if (req.method === "GET" && urlObj.pathname === "/api/state/history") {
+    try {
+      if (!dbEnabled) {
+        sendJson(res, 200, { history: [] });
+        return;
+      }
+      const limitRaw = Number(urlObj.searchParams.get("limit") || 30);
+      const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(100, limitRaw)) : 30;
+      const { rows } = await pool.query(
+        `
+          SELECT id, source, state_updated_at, created_at
+          FROM app_state_history
+          ORDER BY created_at DESC
+          LIMIT $1
+        `,
+        [limit]
+      );
+      sendJson(res, 200, { history: rows });
+    } catch (error) {
+      sendJson(res, 500, { error: error.message || "state history read failed" });
+    }
+    return;
+  }
+
+  if (req.method === "POST" && urlObj.pathname === "/api/state/restore") {
+    try {
+      if (!dbEnabled) {
+        sendJson(res, 503, { error: "Restore requires Postgres" });
+        return;
+      }
+      const raw = await readBody(req);
+      const parsed = raw ? JSON.parse(raw) : {};
+      const historyId = Number(parsed.historyId);
+      if (!Number.isFinite(historyId)) {
+        sendJson(res, 400, { error: "Invalid historyId" });
+        return;
+      }
+      const { rows } = await pool.query(
+        "SELECT state FROM app_state_history WHERE id = $1",
+        [historyId]
+      );
+      if (!rows.length) {
+        sendJson(res, 404, { error: "Backup not found" });
+        return;
+      }
+      await putAppState(rows[0].state || {}, `restore:${historyId}`);
+      sendJson(res, 200, { ok: true, restoredFrom: historyId, lastSavedAt: lastStateWriteAt });
+    } catch (error) {
+      sendJson(res, 500, { error: error.message || "restore failed" });
     }
     return;
   }
