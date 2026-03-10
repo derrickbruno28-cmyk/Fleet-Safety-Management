@@ -1047,10 +1047,40 @@ const SHARED_STATE_API='/api/state';
 let sharedSyncBusy=false;
 let lastSharedSig='';
 
-function mergeById(localArr,remoteArr){
+function hashStr(s){
+  let h=2166136261>>>0;
+  const str=String(s||'');
+  for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619);}
+  return (h>>>0).toString(36);
+}
+
+function makeId(prefix,key){
+  return `${prefix}-${hashStr(key)}`;
+}
+
+function ensureRecordIds(){
+  (incidents||[]).forEach(r=>{if(!r.id)r.id=makeId('inc',[r.date,r.driver,r.type,r.summary,r.ref].join('|'));});
+  (cases||[]).forEach(r=>{if(!r.id)r.id=makeId('case',[(r.casenum||''),(r.driver||''),(r.incidentDate||''),(r.description||'')].join('|'));});
+  (tcvRecords||[]).forEach(r=>{if(!r.id)r.id=makeId('tcv',[r.date,r.driver,r.type,r.details].join('|'));});
+  (checkCalls||[]).forEach(r=>{if(!r.id)r.id=makeId('call',[r.date,r.driver,r.exec,r.situation].join('|'));});
+  (trackerEntries||[]).forEach(r=>{if(!r.id)r.id=makeId('trk',[r.driver,r.type,r.notes,r.dateAdded].join('|'));});
+  (csaReports||[]).forEach(r=>{if(!r.id)r.id=makeId('csa',[r.company,r.date,r.score].join('|'));});
+}
+
+function mergeById(localArr,remoteArr,getKey){
   const map=new Map();
-  (remoteArr||[]).forEach(it=>{if(it&&it.id)map.set(it.id,it);});
-  (localArr||[]).forEach(it=>{if(it&&it.id)map.set(it.id,{...(map.get(it.id)||{}),...it});});
+  (remoteArr||[]).forEach(it=>{
+    if(!it)return;
+    const key=(it.id)|| (getKey?getKey(it):'');
+    if(!key)return;
+    map.set(key,{...it,id:it.id||key});
+  });
+  (localArr||[]).forEach(it=>{
+    if(!it)return;
+    const key=(it.id)|| (getKey?getKey(it):'');
+    if(!key)return;
+    map.set(key,{...(map.get(key)||{}),...it,id:it.id||key});
+  });
   return [...map.values()];
 }
 
@@ -1063,6 +1093,7 @@ function buildTaskSnapshot(){
 }
 
 function buildSharedSnapshot(){
+  ensureRecordIds();
   return {
     incidents,cases,tcvRecords,checkCalls,trackerEntries,boardPosts,csaReports,
     tasks:buildTaskSnapshot()
@@ -1114,15 +1145,25 @@ function applySharedSnapshot(snap){
 }
 
 function mergeSnapshots(localSnap,remoteSnap){
+  const keyFns={
+    incidents:(r)=>makeId('inc',[r.date,r.driver,r.type,r.summary,r.ref].join('|')),
+    cases:(r)=>makeId('case',[(r.casenum||''),(r.driver||''),(r.incidentDate||''),(r.description||'')].join('|')),
+    tcvRecords:(r)=>makeId('tcv',[r.date,r.driver,r.type,r.details].join('|')),
+    checkCalls:(r)=>makeId('call',[r.date,r.driver,r.exec,r.situation].join('|')),
+    trackerEntries:(r)=>makeId('trk',[r.driver,r.type,r.notes,r.dateAdded].join('|')),
+    boardPosts:(r)=>r.id||makeId('post',[r.author,r.subject,r.message,r.timestamp].join('|')),
+    csaReports:(r)=>makeId('csa',[r.company,r.date,r.score].join('|')),
+    tasks:(r)=>r.id||makeId('task',[r.group,r.text,r.driver,r.followup].join('|')),
+  };
   return {
-    incidents:mergeById(localSnap.incidents,remoteSnap.incidents),
-    cases:mergeById(localSnap.cases,remoteSnap.cases),
-    tcvRecords:mergeById(localSnap.tcvRecords,remoteSnap.tcvRecords),
-    checkCalls:mergeById(localSnap.checkCalls,remoteSnap.checkCalls),
-    trackerEntries:mergeById(localSnap.trackerEntries,remoteSnap.trackerEntries),
-    boardPosts:mergeById(localSnap.boardPosts,remoteSnap.boardPosts),
-    csaReports:mergeById(localSnap.csaReports,remoteSnap.csaReports),
-    tasks:mergeById(localSnap.tasks,remoteSnap.tasks),
+    incidents:mergeById(localSnap.incidents,remoteSnap.incidents,keyFns.incidents),
+    cases:mergeById(localSnap.cases,remoteSnap.cases,keyFns.cases),
+    tcvRecords:mergeById(localSnap.tcvRecords,remoteSnap.tcvRecords,keyFns.tcvRecords),
+    checkCalls:mergeById(localSnap.checkCalls,remoteSnap.checkCalls,keyFns.checkCalls),
+    trackerEntries:mergeById(localSnap.trackerEntries,remoteSnap.trackerEntries,keyFns.trackerEntries),
+    boardPosts:mergeById(localSnap.boardPosts,remoteSnap.boardPosts,keyFns.boardPosts),
+    csaReports:mergeById(localSnap.csaReports,remoteSnap.csaReports,keyFns.csaReports),
+    tasks:mergeById(localSnap.tasks,remoteSnap.tasks,keyFns.tasks),
   };
 }
 
