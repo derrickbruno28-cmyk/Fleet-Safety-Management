@@ -1042,6 +1042,139 @@ document.querySelectorAll('.modal-overlay').forEach(m=>{
   document.getElementById('week-label').textContent=f(mon)+' – '+f(sun)+', '+sun.getFullYear();
 })();
 
+// ── SHARED STATE SYNC ──
+const SHARED_STATE_API='/api/state';
+let sharedSyncBusy=false;
+let lastSharedSig='';
+
+function mergeById(localArr,remoteArr){
+  const map=new Map();
+  (remoteArr||[]).forEach(it=>{if(it&&it.id)map.set(it.id,it);});
+  (localArr||[]).forEach(it=>{if(it&&it.id)map.set(it.id,{...(map.get(it.id)||{}),...it});});
+  return [...map.values()];
+}
+
+function buildTaskSnapshot(){
+  return Object.values(taskRegistry||{}).map(t=>({
+    id:t.id,text:t.text,freq:t.freq,assign:t.assign,timeframe:t.timeframe,followup:t.followup||'',reason:t.reason||'',
+    driver:t.driver||'',carrier:t.carrier||'',linkedCase:t.linkedCase||'',group:t.group||'discipline',
+    completed:!!t.completed,completedBy:t.completedBy||'',completedAt:t.completedAt||'',updateNote:t.updateNote||''
+  }));
+}
+
+function buildSharedSnapshot(){
+  return {
+    incidents,cases,tcvRecords,checkCalls,trackerEntries,boardPosts,csaReports,
+    tasks:buildTaskSnapshot()
+  };
+}
+
+function recalcIncMap(){
+  incMap={Accident:0,Violation:0,Citation:0,'DOT Inspection':0,'Camera Safety Event':0,Report:0};
+  (incidents||[]).forEach(i=>{incMap[i.type]=(incMap[i.type]||0)+1;});
+}
+
+function clearTaskUI(){
+  ['video','samsara','boards','drivers','discipline'].forEach(g=>{
+    const el=document.getElementById('task-group-'+g);
+    if(el)el.innerHTML='';
+  });
+  const done=document.getElementById('task-completed-list');
+  if(done)done.innerHTML='No completed tasks yet.';
+  taskRegistry={};
+  taskState={};
+}
+
+function restoreTasksFromSnapshot(tasks){
+  clearTaskUI();
+  if(Array.isArray(tasks)&&tasks.length){
+    tasks.forEach(t=>{
+      const g=t.group&&document.getElementById('task-group-'+t.group)?t.group:'discipline';
+      registerTask({...t},g,document.getElementById('task-group-'+g));
+    });
+  }else{
+    buildTasks();
+  }
+  updateProgress();
+  renderCompletedEmpty();
+}
+
+function applySharedSnapshot(snap){
+  if(!snap||typeof snap!=='object')return;
+  incidents=Array.isArray(snap.incidents)?snap.incidents:[];
+  cases=Array.isArray(snap.cases)?snap.cases:[];
+  tcvRecords=Array.isArray(snap.tcvRecords)?snap.tcvRecords:[];
+  checkCalls=Array.isArray(snap.checkCalls)?snap.checkCalls:[];
+  trackerEntries=Array.isArray(snap.trackerEntries)?snap.trackerEntries:[];
+  boardPosts=Array.isArray(snap.boardPosts)?snap.boardPosts:[];
+  csaReports=Array.isArray(snap.csaReports)?snap.csaReports:[];
+  restoreTasksFromSnapshot(Array.isArray(snap.tasks)?snap.tasks:[]);
+  recalcIncMap();
+  renderIncidentLog();updateOvStats();renderDiscipline();renderTCV();renderCheckCalls();renderTracker();renderBoard();renderCSAHistory();updateCSASummary();updateCSAChart();
+}
+
+function mergeSnapshots(localSnap,remoteSnap){
+  return {
+    incidents:mergeById(localSnap.incidents,remoteSnap.incidents),
+    cases:mergeById(localSnap.cases,remoteSnap.cases),
+    tcvRecords:mergeById(localSnap.tcvRecords,remoteSnap.tcvRecords),
+    checkCalls:mergeById(localSnap.checkCalls,remoteSnap.checkCalls),
+    trackerEntries:mergeById(localSnap.trackerEntries,remoteSnap.trackerEntries),
+    boardPosts:mergeById(localSnap.boardPosts,remoteSnap.boardPosts),
+    csaReports:mergeById(localSnap.csaReports,remoteSnap.csaReports),
+    tasks:mergeById(localSnap.tasks,remoteSnap.tasks),
+  };
+}
+
+async function pushSharedState(){
+  if(sharedSyncBusy)return;
+  sharedSyncBusy=true;
+  try{
+    const local=buildSharedSnapshot();
+    let remote={};
+    try{
+      const r=await fetch(SHARED_STATE_API,{cache:'no-store'});
+      const j=await r.json();
+      remote=j&&j.state?j.state:{};
+    }catch(_){}
+    const merged=mergeSnapshots(local,remote);
+    await fetch(SHARED_STATE_API,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({state:merged})});
+    const sig=JSON.stringify(merged);
+    lastSharedSig=sig;
+  }catch(_){}
+  sharedSyncBusy=false;
+}
+
+async function pullSharedState(){
+  if(sharedSyncBusy)return;
+  try{
+    const r=await fetch(SHARED_STATE_API,{cache:'no-store'});
+    const j=await r.json();
+    if(!j||!j.state)return;
+    const local=buildSharedSnapshot();
+    const merged=mergeSnapshots(local,j.state);
+    const sig=JSON.stringify(merged);
+    if(sig!==lastSharedSig){
+      lastSharedSig=sig;
+      applySharedSnapshot(merged);
+    }
+  }catch(_){}
+}
+
+function startSharedStateSync(){
+  const initial=buildSharedSnapshot();
+  lastSharedSig=JSON.stringify(initial);
+  pullSharedState();
+  setInterval(()=>{
+    const nowSig=JSON.stringify(buildSharedSnapshot());
+    if(nowSig!==lastSharedSig){
+      lastSharedSig=nowSig;
+      pushSharedState();
+    }
+  },2500);
+  setInterval(()=>pullSharedState(),5000);
+}
+
 // ── WEEKLY TASKS ──
 const WEEKLY_TASKS={
   video:[
@@ -1278,6 +1411,7 @@ function saveNewTask(){
   renderCompletedEmpty();
 }
 buildTasks();
+startSharedStateSync();
 
 // ── CARRIER TABS ──
 let activeCarrier='all';
