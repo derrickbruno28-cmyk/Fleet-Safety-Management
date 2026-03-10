@@ -343,11 +343,15 @@
       <div style="margin-top:6px;font-family:'Share Tech Mono',monospace;font-size:14px;color:var(--text-muted);"><span id="task-done-count">0</span> of <span id="task-total-count">0</span> tasks completed</div>
     </div>
   </div>
+  <div class="card"><div class="card-title">⚖️ Discipline &amp; Compliance</div><div id="task-group-discipline"></div></div>
   <div class="card"><div class="card-title">📹 Safety Training Video</div><div id="task-group-video"></div></div>
   <div class="card"><div class="card-title">📊 Samsara Safety Review</div><div id="task-group-samsara"></div></div>
   <div class="card"><div class="card-title">💬 Fleet Safety Message Boards</div><div id="task-group-boards"></div></div>
   <div class="card"><div class="card-title">🚛 Driver Management</div><div id="task-group-drivers"></div></div>
-  <div class="card"><div class="card-title">⚖️ Discipline &amp; Compliance</div><div id="task-group-discipline"></div></div>
+  <div class="card">
+    <div class="card-title">✅ Completed Tasks</div>
+    <div id="task-completed-list" style="font-family:'Share Tech Mono',monospace;font-size:14px;color:var(--text-muted);">No completed tasks yet.</div>
+  </div>
 </div>
 
 
@@ -629,7 +633,7 @@
         <div><label>Incident Type</label>
           <select id="inc-type" onchange="toggleIncidentFields()">
             <option>Accident</option><option>Violation</option><option>Citation</option>
-            <option>DOT Inspection</option><option>Camera Safety Event</option>
+            <option>DOT Inspection</option><option>Camera Safety Event</option><option>Report</option>
           </select>
         </div>
         <div><label>Date</label><input type="date" id="inc-date"></div>
@@ -664,8 +668,16 @@
     <div class="cond-block" id="inc-accident-block">
       <div class="modal-sec-title">Accident Details</div>
       <div class="form-grid">
-        <div><label>Were police called to the scene?</label><select id="inc-police"><option>No</option><option>Yes</option></select></div>
+        <div><label>Were police called to the scene?</label><select id="inc-police"><option>No</option><option>Yes</option><option>Unknown</option></select></div>
         <div><label>Police / Report Case # (if applicable)</label><input type="text" id="inc-police-case" placeholder="Police Case or Report #"></div>
+      </div>
+    </div>
+
+    <div class="modal-sec">
+      <div class="modal-sec-title">Incident Media</div>
+      <div class="form-full">
+        <label>Upload Photos / Videos</label>
+        <input type="file" id="inc-media" accept="image/*,video/*" multiple>
       </div>
     </div>
 
@@ -1059,16 +1071,30 @@ const WEEKLY_TASKS={
   ],
 };
 let taskState={};
+let taskRegistry={};
 function buildTasks(){
   Object.entries(WEEKLY_TASKS).forEach(([group,tasks])=>{
     const el=document.getElementById('task-group-'+group);
-    tasks.forEach(t=>{taskState[t.id]=false;appendTaskEl(el,t);});
+    tasks.forEach(t=>registerTask({...t},group,el));
   });
+  // Prioritize board visibility + discipline list at top as requested
+  const ov=document.getElementById('section-overview');
+  const board=document.getElementById('safety-board-card');
+  if(ov&&board&&ov.firstElementChild!==board)ov.insertBefore(board,ov.children[1]||null);
   updateProgress();
 }
+function registerTask(t,group,container){
+  t.group=group;
+  t.completed=Boolean(t.completed);
+  taskRegistry[t.id]=t;
+  taskState[t.id]=t.completed;
+  appendTaskEl(container,t);
+}
 function appendTaskEl(container,t){
+  if(!container)return;
   const div=document.createElement('div');
   div.className='task-item';div.id='task-item-'+t.id;
+  div.dataset.group=t.group||'';
   const isOnce=t.freq==='One-Time Only'||t.freq==='once';
   // Follow-up date warning if overdue
   let followupHtml='';
@@ -1083,6 +1109,7 @@ function appendTaskEl(container,t){
     t.driver?`<div style="margin-top:5px;font-family:'Share Tech Mono',monospace;font-size:13px;color:var(--accent-gold);">👤 Driver: ${t.driver}${t.carrier?' · '+t.carrier:''}</div>`:'',
     t.linkedCase?`<div style="font-family:'Share Tech Mono',monospace;font-size:13px;color:var(--accent-blue);">🔗 Linked: ${t.linkedCase}</div>`:'',
     t.reason?`<div style="font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--text-muted);margin-top:3px;font-style:italic;">Reason: ${t.reason}</div>`:'',
+    t.updateNote?`<div style="font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--accent-teal);margin-top:3px;">Update: ${t.updateNote}</div>`:'',
   ].join('');
   div.innerHTML=`<div class="task-check" id="chk-${t.id}" onclick="toggleTask('${t.id}')"></div>
     <div style="flex:1;">
@@ -1095,19 +1122,38 @@ function appendTaskEl(container,t){
       </div>
       ${linkedHtml}
     </div>
-    <button onclick="removeTask('${t.id}')" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:17px;padding:2px 6px;flex-shrink:0;" title="Remove task">✕</button>`;
+    <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
+      <button onclick="editTask('${t.id}')" style="background:none;border:1px solid var(--accent-blue);color:var(--accent-blue);cursor:pointer;font-size:13px;padding:2px 6px;" title="Edit / Update">Edit</button>
+      <button onclick="removeTask('${t.id}')" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:17px;padding:2px 6px;" title="Remove task">✕</button>
+    </div>`;
   container.appendChild(div);
+  if(t.completed)moveTaskToCompleted(t.id);
 }
 function removeTask(id){
   const el=document.getElementById('task-item-'+id);
   if(el)el.remove();
   delete taskState[id];
+  delete taskRegistry[id];
   updateProgress();
+  renderCompletedEmpty();
 }
 function toggleTask(id){
+  const t=taskRegistry[id];
+  if(!t)return;
   taskState[id]=!taskState[id];
+  t.completed=taskState[id];
   document.getElementById('chk-'+id).classList.toggle('checked',taskState[id]);
   document.getElementById('txt-'+id).classList.toggle('done',taskState[id]);
+  if(taskState[id]){
+    const who=t.completedBy||prompt('Who completed this task?','FST')||'FST';
+    t.completedBy=who;
+    t.completedAt=new Date().toLocaleString();
+    moveTaskToCompleted(id);
+  }else{
+    t.completedBy='';
+    t.completedAt='';
+    moveTaskToActive(id);
+  }
   // One-time task: fade and disable after completion
   const item=document.getElementById('task-item-'+id);
   const isOnce=item&&item.querySelector('.task-freq')&&item.querySelector('.task-freq').textContent.includes('One-Time');
@@ -1124,6 +1170,7 @@ function toggleTask(id){
     },400);
   }
   updateProgress();
+  renderCompletedEmpty();
 }
 function updateProgress(){
   const all=Object.keys(taskState).length,done=Object.values(taskState).filter(Boolean).length;
@@ -1137,16 +1184,76 @@ function updateProgress(){
 }
 function resetWeeklyTasks(){
   Object.keys(taskState).forEach(k=>{
+    if(!taskRegistry[k])return;
     const item=document.getElementById('task-item-'+k);
     const isOnce=item&&item.querySelector('.task-freq')&&item.querySelector('.task-freq').textContent.includes('One-Time');
     if(isOnce&&taskState[k])return; // leave one-time completed tasks alone
     taskState[k]=false;
+    taskRegistry[k].completed=false;
+    taskRegistry[k].completedBy='';
+    taskRegistry[k].completedAt='';
+    moveTaskToActive(k);
     const chk=document.getElementById('chk-'+k);
     const txt=document.getElementById('txt-'+k);
     if(chk)chk.classList.remove('checked');
     if(txt)txt.classList.remove('done');
   });
   updateProgress();
+  renderCompletedEmpty();
+}
+function editTask(id){
+  const t=taskRegistry[id];
+  if(!t)return;
+  const newText=prompt('Edit task description:',t.text||'');
+  if(newText===null)return;
+  const newAssign=prompt('Update owner/assignee:',t.assign||'FST');
+  if(newAssign===null)return;
+  const newUpdate=prompt('Add task update note (optional):',t.updateNote||'');
+  t.text=(newText||'').trim()||t.text;
+  t.assign=(newAssign||'').trim()||t.assign;
+  t.updateNote=(newUpdate||'').trim();
+  const current=document.getElementById('task-item-'+id);
+  if(current)current.remove();
+  const target=t.completed?document.getElementById('task-completed-list'):document.getElementById('task-group-'+t.group);
+  appendTaskEl(target,t);
+  if(t.completed)decorateCompletedTask(id,t);
+  updateProgress();
+}
+function moveTaskToCompleted(id){
+  const t=taskRegistry[id];
+  const item=document.getElementById('task-item-'+id);
+  const list=document.getElementById('task-completed-list');
+  if(!t||!item||!list)return;
+  if(list.textContent.trim()==='No completed tasks yet.')list.innerHTML='';
+  list.appendChild(item);
+  decorateCompletedTask(id,t);
+}
+function decorateCompletedTask(id,t){
+  const item=document.getElementById('task-item-'+id);
+  if(!item)return;
+  let badge=item.querySelector('.completed-by');
+  if(!badge){
+    badge=document.createElement('div');
+    badge.className='completed-by';
+    badge.style.cssText="font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--accent-green);margin-top:6px;";
+    const flex=item.querySelector('div[style*=\"flex:1\"]');
+    if(flex)flex.appendChild(badge);
+  }
+  badge.textContent=`✅ Completed by ${t.completedBy||'FST'} on ${t.completedAt||new Date().toLocaleString()}`;
+}
+function moveTaskToActive(id){
+  const t=taskRegistry[id];
+  const item=document.getElementById('task-item-'+id);
+  const target=document.getElementById('task-group-'+(t&&t.group?t.group:'discipline'));
+  if(item&&target)target.appendChild(item);
+  const badge=item&&item.querySelector('.completed-by');
+  if(badge)badge.remove();
+}
+function renderCompletedEmpty(){
+  const list=document.getElementById('task-completed-list');
+  if(!list)return;
+  const hasItems=[...list.querySelectorAll('.task-item')].length>0;
+  if(!hasItems)list.innerHTML='No completed tasks yet.';
 }
 function saveNewTask(){
   const text=document.getElementById('nt-text').value.trim();
@@ -1163,12 +1270,12 @@ function saveNewTask(){
     carrier:document.getElementById('nt-carrier-link').value,
     linkedCase:document.getElementById('nt-linked-case').value.trim(),
   };
-  taskState[t.id]=false;
-  appendTaskEl(document.getElementById('task-group-'+cat),t);
+  registerTask(t,cat,document.getElementById('task-group-'+cat));
   updateProgress();
   closeModal('modal-new-task');
   ['nt-text','nt-assign','nt-timeframe','nt-reason','nt-driver','nt-linked-case','nt-followup'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('nt-carrier-link').value='';
+  renderCompletedEmpty();
 }
 buildTasks();
 
@@ -1183,7 +1290,7 @@ function setCarrierTab(el){
 }
 
 // ── INCIDENT LOG ──
-let incidents=[],incMap={Accident:0,Violation:0,Citation:0,'DOT Inspection':0,'Camera Safety Event':0};
+let incidents=[],incMap={Accident:0,Violation:0,Citation:0,'DOT Inspection':0,'Camera Safety Event':0,Report:0};
 function toggleThirdPartyFields(){
   const v=document.getElementById('inc-thirdparty').value;
   document.getElementById('inc-tp-semi').classList.toggle('show',v==='semi');
@@ -1198,7 +1305,36 @@ function toggleIncidentFields(){
   document.getElementById('inc-camera-block').classList.toggle('show',t==='Camera Safety Event');
 }
 toggleIncidentFields();
-function saveIncident(){
+async function uploadIncidentMediaFiles(files){
+  const list=[...(files||[])].slice(0,20);
+  if(!list.length)return [];
+  try{
+    const payload=await Promise.all(list.map(file=>new Promise((resolve,reject)=>{
+      const reader=new FileReader();
+      reader.onload=()=>resolve({name:file.name,type:file.type,size:file.size,data:reader.result});
+      reader.onerror=()=>reject(new Error('read failed'));
+      reader.readAsDataURL(file);
+    })));
+    const res=await fetch('/api/media/upload',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({files:payload})
+    });
+    if(!res.ok)throw new Error('upload failed');
+    const json=await res.json();
+    return Array.isArray(json.files)?json.files:[];
+  }catch(_){
+    // Fallback to local object URLs if backend upload unavailable
+    return list.map(f=>({
+      mediaId:null,
+      name:f.name,
+      type:f.type||'file',
+      size:f.size||0,
+      url:URL.createObjectURL(f)
+    }));
+  }
+}
+async function saveIncident(){
   const type=document.getElementById('inc-type').value;
   const driver=document.getElementById('inc-driver').value.trim();
   if(!driver){alert('Please enter a driver name.');return;}
@@ -1218,11 +1354,14 @@ function saveIncident(){
   const trailer=document.getElementById('inc-trailer').value.trim();
   const customer=loaded==='yes'?document.getElementById('inc-customer').value.trim():'';
   const loadnum=loaded==='yes'?document.getElementById('inc-loadnum').value.trim():'';
-  incidents.push({date:document.getElementById('inc-date').value,driver,carrier:document.getElementById('inc-carrier').value,type,summary,ref,extra,truck,trailer,loaded,customer,loadnum,thirdParty,status:'Logged'});
+  const mediaInput=document.getElementById('inc-media');
+  const media=await uploadIncidentMediaFiles(mediaInput?.files||[]);
+  incidents.push({date:document.getElementById('inc-date').value,driver,carrier:document.getElementById('inc-carrier').value,type,summary,ref,extra,truck,trailer,loaded,customer,loadnum,thirdParty,media,status:'Logged'});
   incMap[type]=(incMap[type]||0)+1;
   updateOvStats();renderIncidentLog();
   closeModal('modal-log-incident');
   ['inc-date','inc-driver','inc-desc','inc-police-case','inc-cit-num','inc-cit-agency','inc-dot-violations','inc-cam-truck','inc-cam-time','inc-truck','inc-trailer','inc-customer','inc-loadnum'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  if(mediaInput)mediaInput.value='';
   document.getElementById('inc-loaded').value='no';
   document.getElementById('inc-load-block').classList.remove('show');
   document.getElementById('inc-thirdparty').value='none';
@@ -1241,6 +1380,7 @@ function renderIncidentLog(){
     if(inc.type==='DOT Inspection'&&inc.extra)extra=`<div style="font-size:16px;color:${inc.extra.dotPass&&inc.extra.dotPass.includes('Pass')?'var(--accent-green)':'var(--accent-red)'};">${inc.extra.dotPass||''}</div>`;
     if(inc.type==='Camera Safety Event'&&inc.extra)extra=`<div style="font-size:16px;color:var(--text-muted);">Unit: ${inc.extra.camTruck||'—'} · ${inc.extra.camTime||''} · ${inc.extra.camType||''}</div>`;
     if((inc.type==='Citation'||inc.type==='Violation')&&inc.extra)extra=`<div style="font-size:16px;color:var(--text-muted);">Ref#: ${inc.extra.citNum||'—'}${inc.extra.citAgency?' · '+inc.extra.citAgency:''}</div>`;
+    const mediaLine=(inc.media&&inc.media.length)?`<div style="font-size:15px;color:var(--accent-teal);margin-top:4px;">📎 ${inc.media.length} media file(s): ${inc.media.map((m,mi)=>`<a href="${m.url}" download="${m.name}" style="color:var(--accent-teal);text-decoration:underline;margin-right:8px;">${m.name||('file '+(mi+1))}</a>`).join('')}</div>`:'';
     // Third party line
     let tpLine='';
     let equipLine='';
@@ -1255,7 +1395,7 @@ function renderIncidentLog(){
     return`<tr>
       <td>${inc.date||'—'}</td><td>${inc.driver}</td><td style="font-size:17px;">${inc.carrier}</td>
       <td><span class="badge ${tc}">${inc.type}</span></td>
-      <td style="max-width:200px;font-size:18px;">${inc.summary||'—'}${extra}${equipLine}${tpLine}</td>
+      <td style="max-width:200px;font-size:18px;">${inc.summary||'—'}${extra}${equipLine}${tpLine}${mediaLine}</td>
       <td style="font-family:'Share Tech Mono',monospace;font-size:16px;">${inc.ref}</td>
       <td><span class="badge ${inc.status==='→ Discipline'?'badge-red':'badge-grey'}">${inc.status}</span></td>
       <td><div class="action-btns">
@@ -1265,7 +1405,14 @@ function renderIncidentLog(){
     </tr>`;
   }).join('');
 }
-function deleteIncident(i){incidents.splice(i,1);renderIncidentLog();updateOvStats();}
+function deleteIncident(i){
+  const rec=incidents[i];
+  if(rec&&Array.isArray(rec.media))rec.media.forEach(m=>{
+    if(m&&m.mediaId)fetch(`/api/media/${m.mediaId}`,{method:'DELETE'}).catch(()=>{});
+    if(m&&m.url&&String(m.url).startsWith('blob:'))URL.revokeObjectURL(m.url);
+  });
+  incidents.splice(i,1);renderIncidentLog();updateOvStats();
+}
 function openIncToDisc(i){
   document.getElementById('itd-idx').value=i;
   document.getElementById('itd-casenum').value='';
@@ -1651,6 +1798,7 @@ function viewCaseDetail(i){
       ${inc.extra?.dotPass?`<div class="dr"><span class="dl">DOT Result</span><span>${inc.extra.dotPass}</span></div>`:''}
       ${inc.extra?.dotViolations?`<div class="dr"><span class="dl">DOT Violations</span><span>${inc.extra.dotViolations}</span></div>`:''}
       ${inc.extra?.citNum?`<div class="dr"><span class="dl">Citation / Violation #</span><span>${inc.extra.citNum}</span></div>`:''}
+      ${inc.media&&inc.media.length?`<div class="dr full"><span class="dl">Media Files</span><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">${inc.media.map(m=>`<a href="${m.url}" download="${m.name}" class="btn-teal btn-xs" style="text-decoration:none;">⬇ ${m.name}</a>`).join('')}</div></div>`:''}
       ${tp&&tp.type!=='none'?`<div class="dst" style="margin-top:12px;">Third Party Details</div>${tpHtml}`:''}
     </div>`;
   }
@@ -1903,11 +2051,11 @@ function saveQuickTask(){
     carrier:document.getElementById('qt-carrier').value,
     linkedCase:document.getElementById('qt-linked-case').value,
   };
-  taskState[t.id]=false;
   const container=document.getElementById('task-group-'+cat);
-  appendTaskEl(container,t);
+  registerTask(t,cat,container);
   updateProgress();
   closeModal('modal-quick-task');
+  renderCompletedEmpty();
 
   // Flash the FST Tasks nav to signal the new task was added
   const navEl=document.getElementById('nav-weekly');

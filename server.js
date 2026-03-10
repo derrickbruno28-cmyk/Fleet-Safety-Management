@@ -73,6 +73,16 @@ async function ensureDb() {
   await pool.query(
     `INSERT INTO app_state (id, data) VALUES (1, '{}'::jsonb) ON CONFLICT (id) DO NOTHING`
   );
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS incident_media (
+      id BIGSERIAL PRIMARY KEY,
+      filename TEXT NOT NULL,
+      mime_type TEXT NOT NULL,
+      size_bytes INTEGER NOT NULL,
+      content BYTEA NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
 }
 
 async function getAppState() {
@@ -198,6 +208,19 @@ async function fetchSamsaraAssets(token, company = "Company") {
   vehicles.forEach((v) => out.push(normalizeAssetRecord(v, "Truck", company)));
   trailers.forEach((t) => out.push(normalizeAssetRecord(t, "Trailer", company)));
   return out;
+}
+
+function sanitizeFilename(name) {
+  return String(name || "file")
+    .replace(/[^\w.\-() ]+/g, "_")
+    .slice(0, 180);
+}
+
+function parseDataUrl(value) {
+  const raw = String(value || "");
+  const m = raw.match(/^data:([^;]+);base64,(.+)$/);
+  if (!m) return null;
+  return { mimeType: m[1], base64: m[2] };
 }
 
 function serveStatic(req, res, urlObj) {
@@ -330,6 +353,101 @@ const server = http.createServer(async (req, res) => {
       sendJson(res, 200, { assets });
     } catch (error) {
       sendJson(res, 502, { error: error.message || "Samsara asset proxy failed" });
+    }
+    return;
+  }
+
+  if (req.method === "POST" && urlObj.pathname === "/api/media/upload") {
+    try {
+      if (!dbEnabled) {
+        sendJson(res, 503, { error: "Media upload requires Postgres" });
+        return;
+      }
+      const raw = await readBody(req);
+      const parsed = raw ? JSON.parse(raw) : {};
+      const files = Array.isArray(parsed.files) ? parsed.files : [];
+      if (!files.length) {
+        sendJson(res, 400, { error: "No files provided" });
+        return;
+      }
+      const uploaded = [];
+      for (const f of files.slice(0, 20)) {
+        const parsedData = parseDataUrl(f.data);
+        if (!parsedData) continue;
+        const buf = Buffer.from(parsedData.base64, "base64");
+        if (!buf.length) continue;
+        if (buf.length > 25 * 1024 * 1024) {
+          throw new Error(`File too large: ${f.name || "file"}`);
+        }
+        const filename = sanitizeFilename(f.name || "incident-file");
+        const mimeType = String(f.type || parsedData.mimeType || "application/octet-stream").slice(0, 120);
+        const result = await pool.query(
+          `INSERT INTO incident_media (filename, mime_type, size_bytes, content) VALUES ($1,$2,$3,$4) RETURNING id`,
+          [filename, mimeType, buf.length, buf]
+        );
+        const id = result.rows[0].id;
+        uploaded.push({
+          mediaId: id,
+          name: filename,
+          type: mimeType,
+          size: buf.length,
+          url: `/api/media/${id}/download`
+        });
+      }
+      sendJson(res, 200, { files: uploaded });
+    } catch (error) {
+      sendJson(res, 500, { error: error.message || "Media upload failed" });
+    }
+    return;
+  }
+
+  if (req.method === "GET" && /^\/api\/media\/\d+\/download$/.test(urlObj.pathname)) {
+    try {
+      if (!dbEnabled) {
+        sendJson(res, 503, { error: "Media download requires Postgres" });
+        return;
+      }
+      const id = Number(urlObj.pathname.split("/")[3]);
+      if (!Number.isFinite(id)) {
+        sendJson(res, 400, { error: "Invalid media id" });
+        return;
+      }
+      const { rows } = await pool.query(
+        "SELECT filename, mime_type, size_bytes, content FROM incident_media WHERE id = $1",
+        [id]
+      );
+      if (!rows.length) {
+        sendJson(res, 404, { error: "Media not found" });
+        return;
+      }
+      const row = rows[0];
+      res.writeHead(200, {
+        "Content-Type": row.mime_type || "application/octet-stream",
+        "Content-Length": String(row.size_bytes || row.content.length),
+        "Content-Disposition": `attachment; filename=\"${sanitizeFilename(row.filename || `media-${id}`)}\"`
+      });
+      res.end(row.content);
+    } catch (error) {
+      sendJson(res, 500, { error: error.message || "Media download failed" });
+    }
+    return;
+  }
+
+  if (req.method === "DELETE" && /^\/api\/media\/\d+$/.test(urlObj.pathname)) {
+    try {
+      if (!dbEnabled) {
+        sendJson(res, 503, { error: "Media delete requires Postgres" });
+        return;
+      }
+      const id = Number(urlObj.pathname.split("/")[3]);
+      if (!Number.isFinite(id)) {
+        sendJson(res, 400, { error: "Invalid media id" });
+        return;
+      }
+      await pool.query("DELETE FROM incident_media WHERE id = $1", [id]);
+      sendJson(res, 200, { ok: true });
+    } catch (error) {
+      sendJson(res, 500, { error: error.message || "Media delete failed" });
     }
     return;
   }
