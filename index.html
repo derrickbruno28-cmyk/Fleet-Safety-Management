@@ -202,7 +202,7 @@
   <a onclick="showSection('overview')" class="active" id="nav-overview">Overview</a>
   <a onclick="showSection('weekly')" id="nav-weekly">FST Tasks Required</a>
   <a onclick="showSection('discipline')" id="nav-discipline">Driver Discipline</a>
-  <a onclick="showSection('checkcalls')" id="nav-checkcalls">Check Calls</a>
+  <a onclick="showSection('checkcalls')" id="nav-checkcalls">Fleet Safety Calls</a>
   <a onclick="showSection('tracker')" id="nav-tracker">Check Call Tracker</a>
   <a onclick="showSection('videos')" id="nav-videos">Safety Videos</a>
   <a onclick="showSection('csa')" id="nav-csa">CSA Scores</a>
@@ -470,7 +470,7 @@
 <!-- ═══════════════════════════ CHECK CALLS ═══════════════════════════ -->
 <div class="section" id="section-checkcalls">
   <div class="page-header">
-    <div><div class="page-title">Check Calls</div><div class="page-desc">Fleet Safety Check Call transcripts &amp; action records</div></div>
+    <div><div class="page-title">Fleet Safety Check Calls</div><div class="page-desc">Fleet Safety Check Call transcripts &amp; action records · Includes escalation &amp; discipline fields</div></div>
     <button class="btn-primary" onclick="openModal('modal-new-checkcall')">+ Log Check Call</button>
   </div>
   <div class="stat-grid" style="grid-template-columns:repeat(auto-fill,minmax(110px,1fr));">
@@ -611,6 +611,7 @@
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
       <button class="btn-primary" onclick="openModal('modal-add-ao-driver')">+ Add Driver</button>
       <button class="btn-secondary btn-sm" onclick="openModal('modal-import-ao-drivers')">⇧ Import Roster</button>
+      <button class="btn-teal btn-sm" onclick="openModal('modal-ao-manager-emails')">✉ Manager Alerts</button>
     </div>
   </div>
 
@@ -637,10 +638,9 @@
       </select>
       <select id="ao-filter-carrier" onchange="renderAssetOpsTable()" style="font-size:15px;padding:6px 10px;">
         <option value="all">All Carriers</option>
-        <option>AJG Transport</option>
-        <option>Gomez Haulers</option>
-        <option>AG4 Haulers</option>
-        <option>A Plus Three</option>
+        <option value="AJG Transport">AJG Transport</option>
+        <option value="GH Logistics">GH Logistics</option>
+        <option value="AJG Transport / GH Logistics">Both AJG + GH</option>
       </select>
     </div>
   </div>
@@ -669,8 +669,17 @@
   <div class="card">
     <div class="card-title">Recent Check Call Activity (Last 7 Days)</div>
     <div class="table-wrap"><table>
-      <thead><tr><th>Date/Time</th><th>Driver</th><th>Called By</th><th>Notes</th></tr></thead>
-      <tbody id="ao-history-body"><tr class="empty-row"><td colspan="4">No call history yet.</td></tr></tbody>
+      <thead><tr><th>Date/Time</th><th>Driver</th><th>Called By</th><th>Score</th><th>Analysis</th><th>AI Synopsis</th></tr></thead>
+      <tbody id="ao-history-body"><tr class="empty-row"><td colspan="6">No call history yet.</td></tr></tbody>
+    </table></div>
+  </div>
+
+  <!-- Flagged Calls (Score ≤ 7) -->
+  <div class="card">
+    <div class="card-title" style="color:var(--accent-red);">⚠ Flagged Calls — Driver Attitude ≤ 7 (Requires Manager Review)</div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Date</th><th>Driver</th><th>Score</th><th>Called By</th><th>Analysis</th><th>Manager Notified</th></tr></thead>
+      <tbody id="ao-flagged-body"><tr class="empty-row"><td colspan="6">No flagged calls.</td></tr></tbody>
     </table></div>
   </div>
 </div>
@@ -2866,18 +2875,337 @@ document.addEventListener('DOMContentLoaded',()=>{
 // ══════════════════════════════════════════════════════
 // ASSET OPS CHECK CALLS — 48hr driver check call system
 // ══════════════════════════════════════════════════════
+
+// 192 unique active drivers from Samsara (AJG + GH) — deduped by phone — generated 2026-03-11
+const SAMSARA_DRIVER_SEED=[
+{name:"Abdelrahman Ahmed",carrier:"AJG Transport / GH Logistics",phone:"2147144049"},
+{name:"Aerial Alexus King",carrier:"AJG Transport / GH Logistics",phone:"6825644444"},
+{name:"Ahmed Abdulwahab",carrier:"AJG Transport / GH Logistics",phone:"2106687477"},
+{name:"Alex Israel Nelson",carrier:"AJG Transport / GH Logistics",phone:"9179292833"},
+{name:"Alexander Brenes",carrier:"AJG Transport / GH Logistics",phone:"6822764181"},
+{name:"Amador Martinez",carrier:"AJG Transport / GH Logistics",phone:"2103745615"},
+{name:"Angel Corrales-Gonzalez",carrier:"AJG Transport / GH Logistics",phone:"2106381198"},
+{name:"Angel Gonzales",carrier:"AJG Transport / GH Logistics",phone:"2106095215"},
+{name:"Anna Hamilton",carrier:"AJG Transport",phone:"5129656768"},
+{name:"Anthony Gonzales",carrier:"AJG Transport / GH Logistics",phone:"2818046031"},
+{name:"Arturo Marcias",carrier:"AJG Transport / GH Logistics",phone:"8303558938"},
+{name:"Ashley Anderson",carrier:"GH Logistics",phone:"3182880485"},
+{name:"Baxter Franco",carrier:"GH Logistics",phone:"5127855058"},
+{name:"Benjamin Anderson",carrier:"AJG Transport / GH Logistics",phone:"8178461721"},
+{name:"Brian Flannery",carrier:"AJG Transport / GH Logistics",phone:"8088889056"},
+{name:"Brian Keith Laitinen",carrier:"AJG Transport / GH Logistics",phone:"5202723508"},
+{name:"Brieana Winston",carrier:"AJG Transport",phone:"4696702337"},
+{name:"Bruce Woodrum",carrier:"AJG Transport / GH Logistics",phone:"7193212066"},
+{name:"Caleb Paul",carrier:"AJG Transport",phone:"2102864525"},
+{name:"Carlos Ramirez",carrier:"AJG Transport",phone:"8179022504"},
+{name:"Cedric Morris",carrier:"AJG Transport / GH Logistics",phone:"2104200528"},
+{name:"Christopher Rinehart",carrier:"AJG Transport / GH Logistics",phone:"4322481684"},
+{name:"Claude Whisenhunt",carrier:"AJG Transport / GH Logistics",phone:"2089187956"},
+{name:"CodyAJGOPS",carrier:"AJG Transport",phone:"3614449141"},
+{name:"Corey Jackson",carrier:"AJG Transport / GH Logistics",phone:"9032215959"},
+{name:"Crawford Bell III",carrier:"GH Logistics",phone:"6822498015"},
+{name:"Curtis House",carrier:"GH Logistics",phone:"9077179782"},
+{name:"Dale Robinson",carrier:"GH Logistics",phone:"2102967323"},
+{name:"Damon Spencer",carrier:"GH Logistics",phone:"3187512872"},
+{name:"Daniel Herrera",carrier:"AJG Transport / GH Logistics",phone:"2103174085"},
+{name:"Daniel Jay Williams",carrier:"AJG Transport / GH Logistics",phone:"9362242264"},
+{name:"Dario Portillo",carrier:"GH Logistics",phone:"2107458510"},
+{name:"Daryl Marshall",carrier:"AJG Transport / GH Logistics",phone:"2103467463"},
+{name:"Dashawn Lewis",carrier:"GH Logistics",phone:"3377186072"},
+{name:"David Garza",carrier:"AJG Transport / GH Logistics",phone:"3612329403"},
+{name:"Davonte Galbert",carrier:"AJG Transport / GH Logistics",phone:"4696905096"},
+{name:"Dayne Butanas",carrier:"GH Logistics",phone:""},
+{name:"Demariye Mathis Grant",carrier:"AJG Transport / GH Logistics",phone:"4693877785"},
+{name:"Deon Nickens",carrier:"AJG Transport / GH Logistics",phone:"2108193603"},
+{name:"Derek Brewer",carrier:"AJG Transport / GH Logistics",phone:"9793449231"},
+{name:"Derek Ramirez",carrier:"AJG Transport / GH Logistics",phone:"7265822537"},
+{name:"Derion Newberry",carrier:"AJG Transport / GH Logistics",phone:"9012654513"},
+{name:"Derrick Bruno",carrier:"AJG Transport / GH Logistics",phone:""},
+{name:"Derrick Jevon Scott",carrier:"AJG Transport",phone:"2816629673"},
+{name:"Desiree Torres",carrier:"AJG Transport / GH Logistics",phone:"7263002002"},
+{name:"Devonte Cunningham",carrier:"AJG Transport / GH Logistics",phone:"2108836641"},
+{name:"Donje Mcdonald",carrier:"AJG Transport / GH Logistics",phone:"2548922126"},
+{name:"Donna Lorraine Langston",carrier:"AJG Transport / GH Logistics",phone:"5202413225"},
+{name:"Efrain (Fleet Maintenance)",carrier:"GH Logistics",phone:""},
+{name:"Efrain Rodriguez",carrier:"AJG Transport",phone:"2104002025"},
+{name:"Eric Stacker",carrier:"AJG Transport",phone:"7022810374"},
+{name:"Erick Ryan Gonzales",carrier:"AJG Transport / GH Logistics",phone:"2103651738"},
+{name:"Erin Delbosque",carrier:"AJG Transport / GH Logistics",phone:"3612540014"},
+{name:"Ernest Thalmann",carrier:"AJG Transport / GH Logistics",phone:"3612301414"},
+{name:"Fabian Hogan",carrier:"AJG Transport / GH Logistics",phone:"3185605920"},
+{name:"Fausto Mandujano",carrier:"AJG Transport / GH Logistics",phone:"2107499003"},
+{name:"Francessca Martin",carrier:"AJG Transport / GH Logistics",phone:"6824535279"},
+{name:"Franco Santos",carrier:"AJG Transport / GH Logistics",phone:"2107268282"},
+{name:"Gary White",carrier:"AJG Transport",phone:"2108684740"},
+{name:"Gerardo Portillo",carrier:"AJG Transport / GH Logistics",phone:"9512698395"},
+{name:"Gerardo Torres",carrier:"AJG Transport",phone:"2103552318"},
+{name:"Gerzayn Miranda",carrier:"AJG Transport / GH Logistics",phone:"9565601214"},
+{name:"Harvey Robinson",carrier:"AJG Transport / GH Logistics",phone:"7377084372"},
+{name:"Hector Nava",carrier:"AJG Transport / GH Logistics",phone:"7732091041"},
+{name:"Herbert Bridges",carrier:"AJG Transport",phone:"9012624380"},
+{name:"Ibrahima Fall",carrier:"AJG Transport / GH Logistics",phone:"5126803279"},
+{name:"Ida Jones",carrier:"AJG Transport",phone:"9032442549"},
+{name:"Isaac Robles",carrier:"GH Logistics",phone:"2104132109"},
+{name:"Jacob Vasquez",carrier:"GH Logistics",phone:"8304430459"},
+{name:"Jamarrio Loggins Jr.",carrier:"AJG Transport",phone:"6627749219"},
+{name:"James Eckford",carrier:"AJG Transport / GH Logistics",phone:"6625412937"},
+{name:"James Oneal",carrier:"AJG Transport / GH Logistics",phone:"2107978429"},
+{name:"James Tolbert",carrier:"GH Logistics",phone:"2105175753"},
+{name:"Jason Edwards",carrier:"AJG Transport / GH Logistics",phone:"5013225249"},
+{name:"Javier Villanueva, Jr",carrier:"AJG Transport / GH Logistics",phone:"9562865516"},
+{name:"Jay Harts",carrier:"AJG Transport / GH Logistics",phone:"3238843248"},
+{name:"Jeffery Brown",carrier:"AJG Transport / GH Logistics",phone:"8179865189"},
+{name:"Jennifer Flores",carrier:"AJG Transport / GH Logistics",phone:"2107695129"},
+{name:"Jermaine Thomas",carrier:"AJG Transport",phone:"2144778398"},
+{name:"Jesse Romo",carrier:"AJG Transport / GH Logistics",phone:"2107622093"},
+{name:"Jessica Hudson",carrier:"AJG Transport",phone:"2149247599"},
+{name:"Jimmy Perez",carrier:"GH Logistics",phone:"2107974118"},
+{name:"Joan Jose Morales",carrier:"AJG Transport / GH Logistics",phone:"2103553048"},
+{name:"Joel Cantu",carrier:"AJG Transport",phone:"2103266251"},
+{name:"John Givens",carrier:"AJG Transport",phone:"4695505414"},
+{name:"Johnny Eric Dominguez",carrier:"AJG Transport / GH Logistics",phone:"2103154614"},
+{name:"Jose Enrique Morales, JR",carrier:"AJG Transport / GH Logistics",phone:"2104405423"},
+{name:"Jose Guajardo",carrier:"AJG Transport / GH Logistics",phone:"9563563597"},
+{name:"Jose Quinones Rivera",carrier:"AJG Transport / GH Logistics",phone:"8057918404"},
+{name:"Jose Rigoberto Medrano Estrada",carrier:"AJG Transport / GH Logistics",phone:"5123186179"},
+{name:"Jose Sanchez",carrier:"AJG Transport / GH Logistics",phone:"2104153857"},
+{name:"Joseph Barraza",carrier:"AJG Transport / GH Logistics",phone:"9158504270"},
+{name:"Joseph Clarence Simpkins",carrier:"AJG Transport",phone:"9727547669"},
+{name:"Joseph Jezzard",carrier:"AJG Transport",phone:"2108332640"},
+{name:"Joshua Wierzbicki",carrier:"AJG Transport / GH Logistics",phone:"3157088917"},
+{name:"Joshuwa Mccain",carrier:"AJG Transport / GH Logistics",phone:"4695081300"},
+{name:"Juan Lopez",carrier:"AJG Transport",phone:"7188126871"},
+{name:"Justin Moody",carrier:"AJG Transport / GH Logistics",phone:"9792188485"},
+{name:"Kathlene RA",carrier:"AJG Transport / GH Logistics",phone:""},
+{name:"Kavoskey Sudds",carrier:"AJG Transport / GH Logistics",phone:"3184709980"},
+{name:"Kenneth Kevin Wogan",carrier:"AJG Transport / GH Logistics",phone:"7138756496"},
+{name:"Kevon Terrell",carrier:"AJG Transport / GH Logistics",phone:"4695069170"},
+{name:"Khalifa Fall",carrier:"AJG Transport / GH Logistics",phone:"2109991119"},
+{name:"Kimala Brown",carrier:"AJG Transport / GH Logistics",phone:"9042340371"},
+{name:"Kwamena Arkoh",carrier:"AJG Transport / GH Logistics",phone:"5128882013"},
+{name:"Kyonna Harrison",carrier:"AJG Transport / GH Logistics",phone:"9188515279"},
+{name:"Laquallys Hollomon",carrier:"AJG Transport / GH Logistics",phone:"2543949307"},
+{name:"Larry Ardila",carrier:"GH Logistics",phone:"2107195330"},
+{name:"Latoya Duffie",carrier:"AJG Transport / GH Logistics",phone:"8326924742"},
+{name:"Leah May",carrier:"AJG Transport / GH Logistics",phone:"9408671344"},
+{name:"Leo Avila",carrier:"AJG Transport / GH Logistics",phone:"2102904329"},
+{name:"Leroy Van Drury",carrier:"AJG Transport / GH Logistics",phone:"2108670640"},
+{name:"Lloyd Perez",carrier:"AJG Transport / GH Logistics",phone:"3617206092"},
+{name:"Loriann Lozzi",carrier:"AJG Transport / GH Logistics",phone:"2106187271"},
+{name:"Luis Alberto Trinidad",carrier:"AJG Transport",phone:""},
+{name:"Luis Fernandez",carrier:"AJG Transport / GH Logistics",phone:"2106270035"},
+{name:"Luis Trinidad",carrier:"AJG Transport",phone:"2106196602"},
+{name:"Madison Milton",carrier:"AJG Transport / GH Logistics",phone:"3145835582"},
+{name:"Malachi Huggins",carrier:"AJG Transport / GH Logistics",phone:"3478062217"},
+{name:"Manuel Arredondo",carrier:"AJG Transport / GH Logistics",phone:"2104579788"},
+{name:"Marco Nunez",carrier:"AJG Transport",phone:"2109920906"},
+{name:"Marcos Mata",carrier:"AJG Transport / GH Logistics",phone:"8303290745"},
+{name:"Mario Lucio Vasquez JR",carrier:"AJG Transport / GH Logistics",phone:"2108637957"},
+{name:"Mario Valdez",carrier:"AJG Transport / GH Logistics",phone:"2106125546"},
+{name:"Mario Vela",carrier:"AJG Transport / GH Logistics",phone:"2107970263"},
+{name:"Marnessia Newberry",carrier:"AJG Transport / GH Logistics",phone:"9018256137"},
+{name:"Matthew Torres",carrier:"AJG Transport",phone:"9726973453"},
+{name:"Maurice La Quinn Williams",carrier:"AJG Transport / GH Logistics",phone:"7136898015"},
+{name:"Micah Serrano",carrier:"GH Logistics",phone:"2104830292"},
+{name:"Michael Firsthley",carrier:"AJG Transport / GH Logistics",phone:"2543891204"},
+{name:"Michael Kruszynski",carrier:"AJG Transport / GH Logistics",phone:"8327577623"},
+{name:"Michelle Whatley",carrier:"AJG Transport / GH Logistics",phone:"8328139931"},
+{name:"Miles Murphy",carrier:"AJG Transport / GH Logistics",phone:"3136715893"},
+{name:"Monica Guerra",carrier:"AJG Transport / GH Logistics",phone:"2103230558"},
+{name:"Nathan Wilson",carrier:"AJG Transport / GH Logistics",phone:"7317800797"},
+{name:"Nathaniel Fernandez",carrier:"AJG Transport",phone:"3256698413"},
+{name:"Nicholas Nockroes",carrier:"AJG Transport / GH Logistics",phone:"2105001278"},
+{name:"Oscar Flores",carrier:"GH Logistics",phone:"2107082925"},
+{name:"Oscar Flores Jr",carrier:"AJG Transport",phone:"2108100790"},
+{name:"Pam Summers",carrier:"AJG Transport",phone:"2108755234"},
+{name:"Pamela",carrier:"AJG Transport",phone:"2109031521"},
+{name:"Pamela Brown",carrier:"AJG Transport",phone:"9722824133"},
+{name:"Phil",carrier:"GH Logistics",phone:""},
+{name:"Rachel Goodloe",carrier:"AJG Transport",phone:"9017990366"},
+{name:"Rafael Gama",carrier:"AJG Transport",phone:"2544624800"},
+{name:"Rahein Clark",carrier:"AJG Transport",phone:"3368948884"},
+{name:"Rashonda Culberson",carrier:"AJG Transport",phone:"9035205512"},
+{name:"Raul Cantu",carrier:"AJG Transport / GH Logistics",phone:"2819322319"},
+{name:"Raul Jose Rubio",carrier:"AJG Transport / GH Logistics",phone:"3253207672"},
+{name:"Raymond Nunn",carrier:"AJG Transport / GH Logistics",phone:"2024235826"},
+{name:"Ricardo Cortez",carrier:"AJG Transport / GH Logistics",phone:"9566709295"},
+{name:"Richard Jack",carrier:"AJG Transport",phone:"2106692297"},
+{name:"Richard Whatley",carrier:"AJG Transport / GH Logistics",phone:"3617569668"},
+{name:"Ricky Jenkins",carrier:"AJG Transport",phone:"2107194423"},
+{name:"Robert Jonathan Ivery",carrier:"GH Logistics",phone:"6094963943"},
+{name:"Robert Spangler, SR",carrier:"AJG Transport / GH Logistics",phone:"8159922033"},
+{name:"Rocio Edith Grano",carrier:"AJG Transport / GH Logistics",phone:"4022130271"},
+{name:"Roger Mccracken",carrier:"AJG Transport / GH Logistics",phone:"2104419860"},
+{name:"Roman Martinez",carrier:"GH Logistics",phone:"2103502801"},
+{name:"Rosendo Venegas",carrier:"GH Logistics",phone:"9562859256"},
+{name:"Ruben Hernandez Jr",carrier:"AJG Transport / GH Logistics",phone:"2104201828"},
+{name:"Ruben Hernandez Sr",carrier:"GH Logistics",phone:"2109191402"},
+{name:"Rubin Cantu Jr",carrier:"AJG Transport / GH Logistics",phone:"8302215884"},
+{name:"Salvador Garcia III",carrier:"AJG Transport / GH Logistics",phone:"2105408767"},
+{name:"Salvador Luna",carrier:"AJG Transport / GH Logistics",phone:"2105378508"},
+{name:"Samuel Mancillas",carrier:"AJG Transport",phone:"3618134347"},
+{name:"Saul Arias",carrier:"AJG Transport / GH Logistics",phone:"2104802956"},
+{name:"Sergio Castellon",carrier:"AJG Transport / GH Logistics",phone:"9095788788"},
+{name:"Shedrick Riley",carrier:"GH Logistics",phone:"8305135280"},
+{name:"Sidney Brisco",carrier:"AJG Transport",phone:"9012297742"},
+{name:"Silvestre Alvarez",carrier:"AJG Transport",phone:"8186201080"},
+{name:"Stephen Craig Ward",carrier:"AJG Transport / GH Logistics",phone:"9729553123"},
+{name:"Steven Barnes",carrier:"AJG Transport / GH Logistics",phone:"7734588274"},
+{name:"Steven Craig Powell",carrier:"GH Logistics",phone:"3142767231"},
+{name:"Steven Guerrero",carrier:"AJG Transport / GH Logistics",phone:"8309311726"},
+{name:"Steven Howell",carrier:"AJG Transport / GH Logistics",phone:"7193393203"},
+{name:"Steven Rosas",carrier:"AJG Transport / GH Logistics",phone:"3612442857"},
+{name:"Susana Hernandez",carrier:"AJG Transport / GH Logistics",phone:"2103657878"},
+{name:"Terence Sanford",carrier:"AJG Transport / GH Logistics",phone:"5048587570"},
+{name:"Thomas Bell",carrier:"AJG Transport",phone:"6624572016"},
+{name:"Thomas Sapp II",carrier:"AJG Transport / GH Logistics",phone:"3616088189"},
+{name:"Timothy Brown",carrier:"AJG Transport / GH Logistics",phone:"9123474232"},
+{name:"Tremayne Hardimon",carrier:"AJG Transport / GH Logistics",phone:"3144652197"},
+{name:"Tyana Eason-nugent",carrier:"AJG Transport / GH Logistics",phone:"8165193442"},
+{name:"Tylee Martin",carrier:"GH Logistics",phone:"7739885205"},
+{name:"Tyrese Thomas",carrier:"AJG Transport",phone:"2103600496"},
+{name:"Uri Ivan Montano",carrier:"AJG Transport / GH Logistics",phone:"7132690310"},
+{name:"Victor Manuel Arredondo",carrier:"GH Logistics",phone:"2102694064"},
+{name:"William Nicholson",carrier:"GH Logistics",phone:"9724802623"},
+{name:"William Zimmerman",carrier:"AJG Transport / GH Logistics",phone:"5402140968"},
+{name:"Yon Soto",carrier:"AJG Transport",phone:"2106325442"},
+{name:"Zach Dickson",carrier:"AJG Transport",phone:"2103947636"}
+];
+
 let aoDrivers=JSON.parse(localStorage.getItem('ao_drivers')||'[]');
 let aoCallLog=JSON.parse(localStorage.getItem('ao_call_log')||'[]');
+
+// Auto-seed drivers from Samsara export if roster is empty or new drivers found
+(function seedAODrivers(){
+  const existing=new Set(aoDrivers.map(d=>d.name.toLowerCase()));
+  let added=0;
+  SAMSARA_DRIVER_SEED.forEach(s=>{
+    if(!existing.has(s.name.toLowerCase())){
+      aoDrivers.push({id:crypto.randomUUID(),name:s.name,carrier:s.carrier,phone:s.phone||'',lastCallAt:null,lastCallBy:null});
+      added++;
+    }
+  });
+  if(added>0){
+    localStorage.setItem('ao_drivers',JSON.stringify(aoDrivers));
+    localStorage.setItem('ao_call_log',JSON.stringify(aoCallLog));
+  }
+})();
 
 function saveAOData(){
   localStorage.setItem('ao_drivers',JSON.stringify(aoDrivers));
   localStorage.setItem('ao_call_log',JSON.stringify(aoCallLog));
-  // Also push to shared state
   try{ pushAOToShared(); }catch(_){}
 }
 
+// Manager alert config
+let aoManagerConfig=JSON.parse(localStorage.getItem('ao_manager_config')||'{"emails":[],"summaryTime":"16:00","threshold":7}');
+
+function saveAOManagerConfig(){
+  const raw=(document.getElementById('ao-mgr-emails').value||'').trim();
+  const emails=raw.split('\n').map(e=>e.trim()).filter(e=>e.includes('@'));
+  aoManagerConfig.emails=emails;
+  aoManagerConfig.summaryTime=document.getElementById('ao-summary-time').value;
+  aoManagerConfig.threshold=parseInt(document.getElementById('ao-alert-threshold').value)||7;
+  localStorage.setItem('ao_manager_config',JSON.stringify(aoManagerConfig));
+  closeModal('modal-ao-manager-emails');
+  showToast('Config Saved',emails.length+' manager email(s) saved. Alerts will trigger at score ≤'+aoManagerConfig.threshold+'.','✉');
+}
+
+// Load manager email config into modal when opened
+const origOpenModal=window.openModal||function(id){document.getElementById(id).classList.add('open');};
+window.openModal=function(id){
+  if(id==='modal-ao-manager-emails'){
+    document.getElementById('ao-mgr-emails').value=(aoManagerConfig.emails||[]).join('\n');
+    document.getElementById('ao-summary-time').value=aoManagerConfig.summaryTime||'16:00';
+    document.getElementById('ao-alert-threshold').value=String(aoManagerConfig.threshold||7);
+  }
+  document.getElementById(id).classList.add('open');
+};
+
+function updateAOScoreDisplay(val){
+  const v=parseInt(val);
+  const display=document.getElementById('ao-score-display');
+  const warning=document.getElementById('ao-score-warning');
+  const threshold=aoManagerConfig.threshold||7;
+  display.textContent=v;
+  display.style.color=v<=threshold?'var(--accent-red)':v<=5?'var(--accent-gold)':'var(--accent-green)';
+  warning.style.display=v<=threshold?'block':'none';
+}
+
+function generateAOSynopsis(){
+  const analysis=(document.getElementById('ao-call-analysis').value||'').trim();
+  if(!analysis){alert('Please fill in the Check Call Analysis first.');return;}
+  const driverName=document.getElementById('ao-call-driver-label').textContent.replace('📞 ','');
+  const score=document.getElementById('ao-call-attitude').value;
+  const calledBy=(document.getElementById('ao-call-by').value||'').trim()||'Ops team member';
+
+  // Build a structured synopsis from the analysis
+  const scoreTxt=score<=3?'hostile/uncooperative':score<=5?'below average':score<=7?'neutral/needs improvement':'positive/cooperative';
+  const synopsis=`CHECK CALL SYNOPSIS — ${driverName}\nCalled by: ${calledBy} | Attitude Score: ${score}/10 (${scoreTxt})\n\nSummary: ${analysis.length>200?analysis.substring(0,200)+'...':analysis}\n\n${parseInt(score)<=(aoManagerConfig.threshold||7)?'⚠ FLAGGED FOR MANAGER REVIEW — Score below threshold.':'Status: No escalation needed.'}`;
+
+  document.getElementById('ao-call-synopsis').value=synopsis;
+  showToast('Synopsis Generated','AI synopsis created. Review and edit as needed.','🤖');
+}
+
+function openAOCallModal(id){
+  const d=aoDrivers.find(x=>x.id===id);
+  if(!d) return;
+  document.getElementById('ao-call-driver-id').value=id;
+  document.getElementById('ao-call-driver-label').textContent='📞 '+d.name;
+  document.getElementById('ao-call-datetime').value=new Date().toISOString().slice(0,16);
+  document.getElementById('ao-call-by').value='';
+  document.getElementById('ao-call-attitude').value=8;
+  updateAOScoreDisplay(8);
+  document.getElementById('ao-call-analysis').value='';
+  document.getElementById('ao-call-synopsis').value='';
+  document.getElementById('ao-call-plan').value='';
+  const audioEl=document.getElementById('ao-call-audio');
+  if(audioEl) audioEl.value='';
+  openModal('modal-log-ao-call');
+}
+
+function saveAOCheckCall(){
+  const id=document.getElementById('ao-call-driver-id').value;
+  const by=(document.getElementById('ao-call-by').value||'').trim();
+  if(!by) return alert('Caller name is required.');
+  const attitude=parseInt(document.getElementById('ao-call-attitude').value)||8;
+  const analysis=(document.getElementById('ao-call-analysis').value||'').trim();
+  if(!analysis) return alert('Check Call Analysis is required.');
+  const synopsis=(document.getElementById('ao-call-synopsis').value||'').trim();
+  const plan=(document.getElementById('ao-call-plan').value||'').trim();
+  const dt=document.getElementById('ao-call-datetime').value;
+  const d=aoDrivers.find(x=>x.id===id);
+  if(!d) return;
+  const callAt=dt?new Date(dt).toISOString():new Date().toISOString();
+  d.lastCallAt=callAt;
+  d.lastCallBy=by;
+  const threshold=aoManagerConfig.threshold||7;
+  const flagged=attitude<=threshold;
+  const callRecord={
+    id:crypto.randomUUID(),driverId:id,driver:d.name,by,at:callAt,
+    attitude,analysis,synopsis,plan,flagged,
+    managerNotified:flagged&&aoManagerConfig.emails.length>0
+  };
+  aoCallLog.push(callRecord);
+  saveAOData();
+  renderAssetOpsTable();
+  closeModal('modal-log-ao-call');
+
+  if(flagged){
+    showToast('⚠ Call Flagged','Driver '+d.name+' scored '+attitude+'/10. '+(aoManagerConfig.emails.length?'Manager alert queued.':'No manager emails configured — go to Manager Alerts to set up.'),'⚠');
+  } else {
+    showToast('Check Call Logged','Logged call for '+d.name+' by '+by+' — Score: '+attitude+'/10','✓');
+  }
+}
+
+function removeAODriver(id){
+  if(!confirm('Remove this driver from the roster?')) return;
+  aoDrivers=aoDrivers.filter(d=>d.id!==id);
+  saveAOData();
+  renderAssetOpsTable();
+}
+
 function pushAOToShared(){
-  // Piggyback on existing shared state sync
   const snap=buildSharedSnapshot();
   snap.aoDrivers=aoDrivers;
   snap.aoCallLog=aoCallLog;
@@ -2893,8 +3221,15 @@ function aoStatusInfo(driver){
   const hrs=hoursSinceCall(driver);
   if(hrs===Infinity) return {label:'NEVER CALLED',cls:'red',sort:999999};
   if(hrs>48) return {label:'>48H OVERDUE',cls:'red',sort:100000+hrs};
-  if(hrs>24) return {label:'24–48H',cls:'gold',sort:50000+hrs};
+  if(hrs>24) return {label:'24\u201348H',cls:'gold',sort:50000+hrs};
   return {label:'CURRENT',cls:'green',sort:hrs};
+}
+
+function scoreColor(score){
+  if(score<=3) return 'var(--accent-red)';
+  if(score<=5) return 'var(--accent-red)';
+  if(score<=7) return 'var(--accent-gold)';
+  return 'var(--accent-green)';
 }
 
 function renderAssetOpsTable(){
@@ -2904,7 +3239,7 @@ function renderAssetOpsTable(){
 
   let filtered=aoDrivers.filter(d=>{
     if(search && !d.name.toLowerCase().includes(search) && !(d.carrier||'').toLowerCase().includes(search)) return false;
-    if(filterCarrier!=='all' && d.carrier!==filterCarrier) return false;
+    if(filterCarrier!=='all' && !(d.carrier||'').includes(filterCarrier)) return false;
     const info=aoStatusInfo(d);
     if(filterStatus==='overdue' && info.sort<100000) return false;
     if(filterStatus==='warning' && (info.sort<50000||info.sort>=100000)) return false;
@@ -2913,26 +3248,28 @@ function renderAssetOpsTable(){
     return true;
   });
 
-  // Sort: most overdue first
   filtered.sort((a,b)=>aoStatusInfo(b).sort-aoStatusInfo(a).sort);
 
   const body=document.getElementById('ao-roster-body');
   if(!filtered.length){
-    body.innerHTML='<tr class="empty-row"><td colspan="7">'+(aoDrivers.length?'No drivers match filters.':'No drivers in roster. Click "+ Add Driver" or "Import Roster" to begin.')+'</td></tr>';
+    body.innerHTML='<tr class="empty-row"><td colspan="7">'+(aoDrivers.length?'No drivers match filters.':'No drivers in roster.')+'</td></tr>';
   } else {
     body.innerHTML=filtered.map(d=>{
       const info=aoStatusInfo(d);
       const hrs=hoursSinceCall(d);
-      const hrsText=hrs===Infinity?'—':hrs<1?Math.round(hrs*60)+'m':Math.round(hrs)+'h';
+      const hrsText=hrs===Infinity?'\u2014':hrs<1?Math.round(hrs*60)+'m':Math.round(hrs)+'h';
       const lastCall=d.lastCallAt?new Date(d.lastCallAt).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'Never';
       const statusColor=info.cls==='red'?'var(--accent-red)':info.cls==='gold'?'var(--accent-gold)':'var(--accent-green)';
       const rowBg=info.cls==='red'?'background:rgba(192,57,43,.06);':'';
+      // Get last attitude score for this driver
+      const lastScore=aoCallLog.filter(c=>c.driverId===d.id).sort((a,b)=>new Date(b.at)-new Date(a.at))[0];
+      const scoreBadge=lastScore&&lastScore.attitude?`<span style="font-family:'Orbitron',monospace;font-size:14px;font-weight:700;color:${scoreColor(lastScore.attitude)};">${lastScore.attitude}/10</span>`:'';
       return `<tr style="${rowBg}">
         <td><span class="badge badge-${info.cls==='gold'?'gold':info.cls}" style="font-size:12px;">${info.label}</span></td>
-        <td style="font-weight:600;">${d.name}</td>
-        <td>${d.carrier||'—'}</td>
+        <td style="font-weight:600;">${d.name} ${scoreBadge}</td>
+        <td style="font-size:16px;">${d.carrier||'\u2014'}</td>
         <td>${lastCall}</td>
-        <td>${d.lastCallBy||'—'}</td>
+        <td>${d.lastCallBy||'\u2014'}</td>
         <td style="font-family:'Orbitron',monospace;font-weight:700;color:${statusColor};font-size:20px;">${hrsText}</td>
         <td><button class="btn-green btn-xs" onclick="openAOCallModal('${d.id}')">✓ Log Call</button> <button class="btn-danger btn-xs" onclick="removeAODriver('${d.id}')">✕</button></td>
       </tr>`;
@@ -2959,17 +3296,39 @@ function renderAssetOpsTable(){
   document.getElementById('ao-never').textContent=never;
   document.getElementById('ao-today').textContent=today;
 
-  // Recent history
+  // Recent history with scores and synopsis
   const recent=aoCallLog.filter(c=>(Date.now()-new Date(c.at).getTime())<7*86400000).sort((a,b)=>new Date(b.at)-new Date(a.at));
   const hBody=document.getElementById('ao-history-body');
   if(!recent.length){
-    hBody.innerHTML='<tr class="empty-row"><td colspan="4">No call history yet.</td></tr>';
+    hBody.innerHTML='<tr class="empty-row"><td colspan="6">No call history yet.</td></tr>';
   } else {
-    hBody.innerHTML=recent.slice(0,50).map(c=>`<tr>
-      <td>${new Date(c.at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}</td>
+    hBody.innerHTML=recent.slice(0,50).map(c=>{
+      const sc=c.attitude||'—';
+      const scColor=c.attitude?scoreColor(c.attitude):'var(--text-muted)';
+      return `<tr${c.flagged?' style="background:rgba(192,57,43,.06);"':''}>
+        <td>${new Date(c.at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}</td>
+        <td style="font-weight:600;">${c.driver}</td>
+        <td>${c.by}</td>
+        <td style="font-family:'Orbitron',monospace;font-weight:700;color:${scColor};font-size:18px;">${sc}${c.attitude?'/10':''}</td>
+        <td style="max-width:180px;font-size:16px;">${c.analysis||c.notes||'\u2014'}</td>
+        <td style="max-width:180px;font-size:15px;color:var(--accent-teal);">${c.synopsis?c.synopsis.substring(0,100)+(c.synopsis.length>100?'...':''):'\u2014'}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // Flagged calls
+  const flagged=aoCallLog.filter(c=>c.flagged).sort((a,b)=>new Date(b.at)-new Date(a.at));
+  const fBody=document.getElementById('ao-flagged-body');
+  if(!flagged.length){
+    fBody.innerHTML='<tr class="empty-row"><td colspan="6">No flagged calls.</td></tr>';
+  } else {
+    fBody.innerHTML=flagged.slice(0,30).map(c=>`<tr style="background:rgba(192,57,43,.06);">
+      <td>${new Date(c.at).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</td>
       <td style="font-weight:600;">${c.driver}</td>
+      <td style="font-family:'Orbitron',monospace;font-weight:700;color:var(--accent-red);font-size:18px;">${c.attitude}/10</td>
       <td>${c.by}</td>
-      <td>${c.notes||'—'}</td>
+      <td style="max-width:200px;font-size:16px;">${c.analysis||'\u2014'}</td>
+      <td>${c.managerNotified?'<span class="badge badge-green" style="font-size:12px;">✉ SENT</span>':'<span class="badge badge-grey" style="font-size:12px;">NO EMAILS</span>'}</td>
     </tr>`).join('');
   }
 }
@@ -3004,43 +3363,7 @@ function importAODrivers(){
   renderAssetOpsTable();
   closeModal('modal-import-ao-drivers');
   document.getElementById('ao-import-text').value='';
-  showToast('Import Complete',added+' drivers added, '+(names.length-added)+' duplicates skipped.','📋');
-}
-
-function openAOCallModal(id){
-  const d=aoDrivers.find(x=>x.id===id);
-  if(!d) return;
-  document.getElementById('ao-call-driver-id').value=id;
-  document.getElementById('ao-call-driver-label').textContent='📞 '+d.name;
-  document.getElementById('ao-call-datetime').value=new Date().toISOString().slice(0,16);
-  document.getElementById('ao-call-by').value='';
-  document.getElementById('ao-call-notes').value='';
-  openModal('modal-log-ao-call');
-}
-
-function saveAOCheckCall(){
-  const id=document.getElementById('ao-call-driver-id').value;
-  const by=(document.getElementById('ao-call-by').value||'').trim();
-  if(!by) return alert('Caller name is required.');
-  const dt=document.getElementById('ao-call-datetime').value;
-  const notes=(document.getElementById('ao-call-notes').value||'').trim();
-  const d=aoDrivers.find(x=>x.id===id);
-  if(!d) return;
-  const callAt=dt?new Date(dt).toISOString():new Date().toISOString();
-  d.lastCallAt=callAt;
-  d.lastCallBy=by;
-  aoCallLog.push({id:crypto.randomUUID(),driverId:id,driver:d.name,by,at:callAt,notes});
-  saveAOData();
-  renderAssetOpsTable();
-  closeModal('modal-log-ao-call');
-  showToast('Check Call Logged','Logged call for '+d.name+' by '+by,'✓');
-}
-
-function removeAODriver(id){
-  if(!confirm('Remove this driver from the roster?')) return;
-  aoDrivers=aoDrivers.filter(d=>d.id!==id);
-  saveAOData();
-  renderAssetOpsTable();
+  showToast('Import Complete',added+' drivers added, '+(names.length-added)+' duplicates skipped.','\uD83D\uDCCB');
 }
 
 // ══════════════════════════════════════════════════════
@@ -3311,16 +3634,56 @@ function showToast(title,msg,icon){
 
 <!-- LOG ASSET OPS CHECK CALL -->
 <div class="modal-overlay" id="modal-log-ao-call">
-  <div class="modal" style="max-width:480px;">
-    <div class="modal-header"><div class="modal-title">Log Check Call</div><button class="modal-close" onclick="closeModal('modal-log-ao-call')">✕</button></div>
+  <div class="modal" style="max-width:640px;">
+    <div class="modal-header"><div class="modal-title">Log Asset Ops Check Call</div><button class="modal-close" onclick="closeModal('modal-log-ao-call')">✕</button></div>
     <input type="hidden" id="ao-call-driver-id">
     <div style="font-family:'Orbitron',monospace;font-size:18px;color:var(--accent-gold);margin-bottom:12px;" id="ao-call-driver-label"></div>
+
     <div class="form-grid">
       <div><label>Called By <span style="color:var(--accent-red);">*</span></label><input type="text" id="ao-call-by" placeholder="Your name"></div>
       <div><label>Date/Time</label><input type="datetime-local" id="ao-call-datetime"></div>
     </div>
-    <div class="form-full" style="margin-top:8px;"><label>Notes (optional)</label><textarea id="ao-call-notes" placeholder="Call summary, issues discussed..." style="min-height:60px;"></textarea></div>
-    <div class="modal-actions"><button class="btn-secondary" onclick="closeModal('modal-log-ao-call')">Cancel</button><button class="btn-primary" onclick="saveAOCheckCall()">Log Call</button></div>
+
+    <!-- Driver Attitude Score 1-10 -->
+    <div style="margin:14px 0;background:rgba(232,160,32,.06);border:1px solid var(--accent-gold-dim);padding:14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <label style="margin:0;">Driver Attitude Score <span style="color:var(--accent-red);">*</span></label>
+        <div style="font-family:'Orbitron',monospace;font-size:28px;font-weight:700;" id="ao-score-display">—</div>
+      </div>
+      <input type="range" id="ao-call-attitude" min="1" max="10" value="8" style="width:100%;cursor:pointer;accent-color:var(--accent-gold);" oninput="updateAOScoreDisplay(this.value)">
+      <div style="display:flex;justify-content:space-between;font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--text-muted);">
+        <span>1 — Hostile/Uncooperative</span>
+        <span>5 — Neutral</span>
+        <span>10 — Excellent</span>
+      </div>
+      <div id="ao-score-warning" style="display:none;margin-top:8px;padding:8px;background:rgba(192,57,43,.1);border:1px solid var(--accent-red);font-family:'Share Tech Mono',monospace;font-size:14px;color:var(--accent-red);">
+        ⚠ SCORE 7 OR BELOW — This call will be flagged and escalated to managers via email alert.
+      </div>
+    </div>
+
+    <!-- Check Call Analysis -->
+    <div class="form-full"><label>Check Call Analysis <span style="color:var(--accent-red);">*</span></label><textarea id="ao-call-analysis" placeholder="Describe the call: driver's demeanor, topics discussed, any concerns raised, current situation..." style="min-height:90px;"></textarea></div>
+
+    <!-- AI Synopsis -->
+    <div style="margin:10px 0;background:rgba(26,158,140,.06);border:1px solid var(--accent-teal-dim);padding:14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div class="modal-sec-title" style="margin:0;">AI Call Synopsis</div>
+        <button class="btn-teal btn-xs" onclick="generateAOSynopsis()">🤖 Generate Synopsis</button>
+      </div>
+      <textarea id="ao-call-synopsis" placeholder="Click 'Generate Synopsis' to have AI create a professional summary from your analysis above, or type your own..." style="min-height:72px;font-size:16px;"></textarea>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--text-muted);margin-top:4px;">AI will generate a concise, professional synopsis from your check call analysis. You can edit it after generation.</div>
+    </div>
+
+    <!-- Audio Recording -->
+    <div style="margin-bottom:14px;">
+      <label>Attach Call Recording (optional)</label>
+      <input type="file" id="ao-call-audio" accept="audio/*,.mp3,.m4a,.wav,.ogg,.aac" style="padding:6px;">
+    </div>
+
+    <!-- Resulting Action Plan -->
+    <div class="form-full"><label>Action Plan / Follow-Up (optional)</label><textarea id="ao-call-plan" placeholder="Any follow-up actions needed..." style="min-height:56px;"></textarea></div>
+
+    <div class="modal-actions"><button class="btn-secondary" onclick="closeModal('modal-log-ao-call')">Cancel</button><button class="btn-primary" onclick="saveAOCheckCall()">Save Check Call</button></div>
   </div>
 </div>
 
@@ -3343,6 +3706,38 @@ function showToast(title,msg,icon){
     </div>
     <div class="form-full" style="margin-top:8px;"><label>Memo Content <span style="color:var(--accent-red);">*</span></label><textarea id="memo-content" placeholder="Full memo text..." style="min-height:140px;"></textarea></div>
     <div class="modal-actions"><button class="btn-secondary" onclick="closeModal('modal-new-memo')">Cancel</button><button class="btn-primary" onclick="saveMemo()">Save Memo</button></div>
+  </div>
+</div>
+
+<!-- MANAGER EMAIL ALERTS CONFIG -->
+<div class="modal-overlay" id="modal-ao-manager-emails">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-header"><div class="modal-title">Manager Alert Emails</div><button class="modal-close" onclick="closeModal('modal-ao-manager-emails')">✕</button></div>
+    <div style="font-family:'Share Tech Mono',monospace;font-size:14px;color:var(--text-muted);margin-bottom:12px;">
+      When a check call is saved with a driver attitude score of 7 or below, an alert email will be sent to all managers listed below. A daily summary is also sent at the configured time.
+    </div>
+    <div class="form-full"><label>Manager Emails (one per line)</label>
+      <textarea id="ao-mgr-emails" placeholder="andrew@ghlogistics.com&#10;alfred@ghlogistics.com&#10;peyton@ghlogistics.com" style="min-height:120px;"></textarea>
+    </div>
+    <div class="form-grid" style="margin-top:10px;">
+      <div><label>Daily Summary Time</label>
+        <select id="ao-summary-time">
+          <option value="15:00">3:00 PM</option>
+          <option value="16:00" selected>4:00 PM</option>
+          <option value="17:00">5:00 PM</option>
+          <option value="18:00">6:00 PM</option>
+        </select>
+      </div>
+      <div><label>Alert Threshold (score ≤)</label>
+        <select id="ao-alert-threshold">
+          <option value="5">5 or below</option>
+          <option value="6">6 or below</option>
+          <option value="7" selected>7 or below</option>
+          <option value="8">8 or below</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-actions"><button class="btn-secondary" onclick="closeModal('modal-ao-manager-emails')">Cancel</button><button class="btn-primary" onclick="saveAOManagerConfig()">Save Configuration</button></div>
   </div>
 </div>
 
