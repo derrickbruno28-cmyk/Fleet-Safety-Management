@@ -206,6 +206,8 @@
   <a onclick="showSection('tracker')" id="nav-tracker">Check Call Tracker</a>
   <a onclick="showSection('videos')" id="nav-videos">Safety Videos</a>
   <a onclick="showSection('csa')" id="nav-csa">CSA Scores</a>
+  <a onclick="showSection('assetops')" id="nav-assetops">Asset Ops Calls</a>
+  <a onclick="showSection('memos')" id="nav-memos">Memo Library</a>
 </nav>
 
 <main>
@@ -602,6 +604,120 @@
   </div>
 </div>
 
+<!-- ═══════════════════════════ ASSET OPS CHECK CALLS ═══════════════════════════ -->
+<div class="section" id="section-assetops">
+  <div class="page-header">
+    <div><div class="page-title">Asset Ops — Driver Check Calls</div><div class="page-desc">48-hour check call compliance · Drivers sorted by most overdue first</div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn-primary" onclick="openModal('modal-add-ao-driver')">+ Add Driver</button>
+      <button class="btn-secondary btn-sm" onclick="openModal('modal-import-ao-drivers')">⇧ Import Roster</button>
+    </div>
+  </div>
+
+  <!-- KPI stats -->
+  <div class="stat-grid" style="grid-template-columns:repeat(auto-fill,minmax(140px,1fr));">
+    <div class="stat-box"><div class="stat-label">Total Drivers</div><div class="stat-value" id="ao-total">0</div></div>
+    <div class="stat-box"><div class="stat-label">>48h Overdue</div><div class="stat-value red" id="ao-overdue48">0</div></div>
+    <div class="stat-box"><div class="stat-label">24–48h Warning</div><div class="stat-value" id="ao-warn24" style="color:var(--accent-gold);">0</div></div>
+    <div class="stat-box"><div class="stat-label">Current (<24h)</div><div class="stat-value green" id="ao-current">0</div></div>
+    <div class="stat-box"><div class="stat-label">Never Called</div><div class="stat-value red" id="ao-never">0</div></div>
+    <div class="stat-box"><div class="stat-label">Calls Today</div><div class="stat-value green" id="ao-today">0</div></div>
+  </div>
+
+  <!-- Filters -->
+  <div class="card" style="padding:12px;margin-bottom:16px;">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+      <input type="text" id="ao-search" placeholder="Search drivers..." style="flex:1;min-width:200px;font-size:16px;" oninput="renderAssetOpsTable()">
+      <select id="ao-filter-status" onchange="renderAssetOpsTable()" style="font-size:15px;padding:6px 10px;">
+        <option value="all">All Drivers</option>
+        <option value="overdue">Overdue (>48h)</option>
+        <option value="warning">Warning (24–48h)</option>
+        <option value="current">Current (<24h)</option>
+        <option value="never">Never Called</option>
+      </select>
+      <select id="ao-filter-carrier" onchange="renderAssetOpsTable()" style="font-size:15px;padding:6px 10px;">
+        <option value="all">All Carriers</option>
+        <option>AJG Transport</option>
+        <option>Gomez Haulers</option>
+        <option>AG4 Haulers</option>
+        <option>A Plus Three</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Driver Table -->
+  <div class="card">
+    <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+      <span>Driver Check Call Roster</span>
+      <span id="ao-table-count" style="font-family:'Share Tech Mono',monospace;font-size:14px;color:var(--text-muted);"></span>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr>
+        <th>Status</th>
+        <th>Driver Name</th>
+        <th>Carrier</th>
+        <th>Last Check Call</th>
+        <th>Called By</th>
+        <th>Hours Since</th>
+        <th>Actions</th>
+      </tr></thead>
+      <tbody id="ao-roster-body"><tr class="empty-row"><td colspan="7">No drivers in roster. Click "+ Add Driver" or "Import Roster" to begin.</td></tr></tbody>
+    </table></div>
+  </div>
+
+  <!-- Recent Call History -->
+  <div class="card">
+    <div class="card-title">Recent Check Call Activity (Last 7 Days)</div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Date/Time</th><th>Driver</th><th>Called By</th><th>Notes</th></tr></thead>
+      <tbody id="ao-history-body"><tr class="empty-row"><td colspan="4">No call history yet.</td></tr></tbody>
+    </table></div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════ MEMO LIBRARY ═══════════════════════════ -->
+<div class="section" id="section-memos">
+  <div class="page-header">
+    <div><div class="page-title">Memo Library</div><div class="page-desc">Searchable memo repository · Distribution tracking · Auto-reminders</div></div>
+    <button class="btn-primary" onclick="openModal('modal-new-memo')">+ Create Memo</button>
+  </div>
+
+  <div class="stat-grid" style="grid-template-columns:repeat(auto-fill,minmax(140px,1fr));">
+    <div class="stat-box"><div class="stat-label">Total Memos</div><div class="stat-value" id="memo-total">0</div></div>
+    <div class="stat-box"><div class="stat-label">Overdue (>15d)</div><div class="stat-value red" id="memo-overdue">0</div></div>
+    <div class="stat-box"><div class="stat-label">Sent This Week</div><div class="stat-value green" id="memo-sentweek">0</div></div>
+    <div class="stat-box"><div class="stat-label">Categories</div><div class="stat-value blue" id="memo-cats">0</div></div>
+  </div>
+
+  <!-- Filters -->
+  <div class="card" style="padding:12px;margin-bottom:16px;">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+      <input type="text" id="memo-search" placeholder="Search memos by title, content, category..." style="flex:1;min-width:200px;font-size:16px;" oninput="renderMemoLibrary()">
+      <select id="memo-filter-cat" onchange="renderMemoLibrary()" style="font-size:15px;padding:6px 10px;">
+        <option value="all">All Categories</option>
+        <option>Weather</option>
+        <option>Safety Alert</option>
+        <option>Policy</option>
+        <option>Operational</option>
+        <option>SOP Update</option>
+        <option>Training</option>
+      </select>
+      <select id="memo-filter-status" onchange="renderMemoLibrary()" style="font-size:15px;padding:6px 10px;">
+        <option value="all">All Memos</option>
+        <option value="overdue">Overdue (>15 days)</option>
+        <option value="recent">Recently Sent (7 days)</option>
+        <option value="never">Never Sent</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Memo Cards -->
+  <div id="memo-list-container">
+    <div style="font-family:'Share Tech Mono',monospace;font-size:16px;color:var(--text-muted);text-align:center;padding:30px;">No memos yet. Click "+ Create Memo" to add the first one.</div>
+  </div>
+</div>
+
 </main>
 
 <!-- ═════════════════════════ MODALS ═════════════════════════ -->
@@ -770,6 +886,22 @@
         <div class="form-full"><label>Description of Property Damaged</label><textarea id="inc-tp-prop-desc" placeholder="Describe what was damaged (dock, gate, fence, building, etc.)..." style="min-height:56px;"></textarea></div>
         <div class="form-full"><label>On-Site Personnel Involved or Who Witnessed the Incident</label><textarea id="inc-tp-prop-witnesses" placeholder="Names, titles, and contact info of any on-site personnel who were involved or witnessed the incident..." style="min-height:56px;"></textarea></div>
       </div>
+    </div>
+
+    <!-- BONUS DISQUALIFICATION -->
+    <div class="modal-sec">
+      <div class="modal-sec-title">Safety Bonus Impact</div>
+      <div class="form-grid">
+        <div><label>Disqualifies from Monthly Safety Bonus?</label>
+          <select id="inc-bonus-dq">
+            <option value="pending" selected>⏳ Pending Manager Review</option>
+            <option value="yes">🚫 Yes — Auto Disqualified</option>
+            <option value="no">✅ No — Does Not Disqualify</option>
+          </select>
+        </div>
+        <div><label>Reviewed By</label><input type="text" id="inc-bonus-reviewer" placeholder="Manager name (if reviewed)"></div>
+      </div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:13px;color:var(--text-muted);margin-top:6px;">Default: Pending Manager Review. Preventable accidents, at-fault collisions, DOT violations, and failed pre-trips are typically auto-DQ.</div>
     </div>
 
     <div class="warn-banner">The incident will remain in the Overview log as a permanent record. Use the <strong>"→ Discipline"</strong> action button on the log row if a formal discipline case is needed.</div>
@@ -1657,7 +1789,7 @@ async function saveIncident(){
   const loadnum=loaded==='yes'?document.getElementById('inc-loadnum').value.trim():'';
   const mediaInput=document.getElementById('inc-media');
   const media=await uploadIncidentMediaFiles(mediaInput?.files||[]);
-  incidents.push({date:document.getElementById('inc-date').value,driver,carrier:document.getElementById('inc-carrier').value,type,summary,ref,extra,truck,trailer,loaded,customer,loadnum,thirdParty,media,status:'Logged'});
+  incidents.push({date:document.getElementById('inc-date').value,driver,carrier:document.getElementById('inc-carrier').value,type,summary,ref,extra,truck,trailer,loaded,customer,loadnum,thirdParty,media,status:'Logged',bonusDq:document.getElementById('inc-bonus-dq').value,bonusReviewer:(document.getElementById('inc-bonus-reviewer').value||'').trim()});
   incMap[type]=(incMap[type]||0)+1;
   updateOvStats();renderIncidentLog();
   closeModal('modal-log-incident');
@@ -1670,6 +1802,8 @@ async function saveIncident(){
   document.getElementById('inc-load-block').classList.remove('show');
   document.getElementById('inc-thirdparty').value='none';
   ['inc-tp-semi','inc-tp-civilian','inc-tp-property'].forEach(id=>document.getElementById(id).classList.remove('show'));
+  document.getElementById('inc-bonus-dq').value='pending';
+  document.getElementById('inc-bonus-reviewer').value='';
   ['inc-tp-semi-company','inc-tp-semi-driver','inc-tp-semi-truck','inc-tp-semi-trailer','inc-tp-semi-license','inc-tp-semi-phone','inc-tp-semi-insurance','inc-tp-civ-driver','inc-tp-civ-year','inc-tp-civ-make','inc-tp-civ-model','inc-tp-civ-color','inc-tp-civ-plate','inc-tp-civ-phone','inc-tp-civ-license','inc-tp-civ-insurance','inc-tp-civ-passengers','inc-tp-prop-facility','inc-tp-prop-address','inc-tp-prop-desc','inc-tp-prop-witnesses'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
 }
 function renderIncidentLog(){
@@ -1696,9 +1830,10 @@ function renderIncidentLog(){
       const loadedStr=inc.loaded==='yes'?`<span style="color:var(--accent-gold);">Loaded</span>${inc.customer?' · Cust: '+inc.customer:''}${inc.loadnum?' · Load#: '+inc.loadnum:''}`:inc.loaded==='no'?'<span style="color:var(--text-muted);">Empty</span>':'';
       equipLine=`<div style="font-size:16px;color:var(--text-muted);margin-top:3px;">🚛 ${inc.truck||'—'} / ${inc.trailer||'—'} · ${loadedStr}</div>`;
     }
+    const bonusBadge=inc.bonusDq==='yes'?'<span class="badge badge-red" style="font-size:12px;margin-left:4px;">🚫 BONUS DQ</span>':inc.bonusDq==='no'?'<span class="badge badge-green" style="font-size:12px;margin-left:4px;">✓ BONUS OK</span>':inc.bonusDq==='pending'?'<span class="badge badge-gold" style="font-size:12px;margin-left:4px;">⏳ BONUS REVIEW</span>':'';
     return`<tr>
       <td>${inc.date||'—'}</td><td>${inc.driver}</td><td style="font-size:17px;">${inc.carrier}</td>
-      <td><span class="badge ${tc}">${inc.type}</span></td>
+      <td><span class="badge ${tc}">${inc.type}</span>${bonusBadge}</td>
       <td style="max-width:200px;font-size:18px;">${inc.summary||'—'}${extra}${equipLine}${tpLine}${mediaLine}</td>
       <td style="font-family:'Share Tech Mono',monospace;font-size:16px;">${inc.ref}</td>
       <td><span class="badge ${inc.status==='→ Discipline'?'badge-red':'badge-grey'}">${inc.status}</span></td>
@@ -2724,7 +2859,348 @@ function updateCSAChart(){
 document.addEventListener('DOMContentLoaded',()=>{
   updateCSAChart();
   startSharedStateSync();
+  renderAssetOpsTable();
+  renderMemoLibrary();
 });
+
+// ══════════════════════════════════════════════════════
+// ASSET OPS CHECK CALLS — 48hr driver check call system
+// ══════════════════════════════════════════════════════
+let aoDrivers=JSON.parse(localStorage.getItem('ao_drivers')||'[]');
+let aoCallLog=JSON.parse(localStorage.getItem('ao_call_log')||'[]');
+
+function saveAOData(){
+  localStorage.setItem('ao_drivers',JSON.stringify(aoDrivers));
+  localStorage.setItem('ao_call_log',JSON.stringify(aoCallLog));
+  // Also push to shared state
+  try{ pushAOToShared(); }catch(_){}
+}
+
+function pushAOToShared(){
+  // Piggyback on existing shared state sync
+  const snap=buildSharedSnapshot();
+  snap.aoDrivers=aoDrivers;
+  snap.aoCallLog=aoCallLog;
+  fetch(SHARED_STATE_API,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({state:snap,source:'web-client'})}).catch(()=>{});
+}
+
+function hoursSinceCall(driver){
+  if(!driver.lastCallAt) return Infinity;
+  return (Date.now()-new Date(driver.lastCallAt).getTime())/3600000;
+}
+
+function aoStatusInfo(driver){
+  const hrs=hoursSinceCall(driver);
+  if(hrs===Infinity) return {label:'NEVER CALLED',cls:'red',sort:999999};
+  if(hrs>48) return {label:'>48H OVERDUE',cls:'red',sort:100000+hrs};
+  if(hrs>24) return {label:'24–48H',cls:'gold',sort:50000+hrs};
+  return {label:'CURRENT',cls:'green',sort:hrs};
+}
+
+function renderAssetOpsTable(){
+  const search=(document.getElementById('ao-search').value||'').toLowerCase();
+  const filterStatus=document.getElementById('ao-filter-status').value;
+  const filterCarrier=document.getElementById('ao-filter-carrier').value;
+
+  let filtered=aoDrivers.filter(d=>{
+    if(search && !d.name.toLowerCase().includes(search) && !(d.carrier||'').toLowerCase().includes(search)) return false;
+    if(filterCarrier!=='all' && d.carrier!==filterCarrier) return false;
+    const info=aoStatusInfo(d);
+    if(filterStatus==='overdue' && info.sort<100000) return false;
+    if(filterStatus==='warning' && (info.sort<50000||info.sort>=100000)) return false;
+    if(filterStatus==='current' && info.sort>=50000) return false;
+    if(filterStatus==='never' && info.sort!==999999) return false;
+    return true;
+  });
+
+  // Sort: most overdue first
+  filtered.sort((a,b)=>aoStatusInfo(b).sort-aoStatusInfo(a).sort);
+
+  const body=document.getElementById('ao-roster-body');
+  if(!filtered.length){
+    body.innerHTML='<tr class="empty-row"><td colspan="7">'+(aoDrivers.length?'No drivers match filters.':'No drivers in roster. Click "+ Add Driver" or "Import Roster" to begin.')+'</td></tr>';
+  } else {
+    body.innerHTML=filtered.map(d=>{
+      const info=aoStatusInfo(d);
+      const hrs=hoursSinceCall(d);
+      const hrsText=hrs===Infinity?'—':hrs<1?Math.round(hrs*60)+'m':Math.round(hrs)+'h';
+      const lastCall=d.lastCallAt?new Date(d.lastCallAt).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'Never';
+      const statusColor=info.cls==='red'?'var(--accent-red)':info.cls==='gold'?'var(--accent-gold)':'var(--accent-green)';
+      const rowBg=info.cls==='red'?'background:rgba(192,57,43,.06);':'';
+      return `<tr style="${rowBg}">
+        <td><span class="badge badge-${info.cls==='gold'?'gold':info.cls}" style="font-size:12px;">${info.label}</span></td>
+        <td style="font-weight:600;">${d.name}</td>
+        <td>${d.carrier||'—'}</td>
+        <td>${lastCall}</td>
+        <td>${d.lastCallBy||'—'}</td>
+        <td style="font-family:'Orbitron',monospace;font-weight:700;color:${statusColor};font-size:20px;">${hrsText}</td>
+        <td><button class="btn-green btn-xs" onclick="openAOCallModal('${d.id}')">✓ Log Call</button> <button class="btn-danger btn-xs" onclick="removeAODriver('${d.id}')">✕</button></td>
+      </tr>`;
+    }).join('');
+  }
+
+  document.getElementById('ao-table-count').textContent=filtered.length+' of '+aoDrivers.length+' drivers shown';
+
+  // KPIs
+  let overdue48=0,warn24=0,current=0,never=0,today=0;
+  const todayStart=new Date();todayStart.setHours(0,0,0,0);
+  aoDrivers.forEach(d=>{
+    const info=aoStatusInfo(d);
+    if(info.sort===999999) never++;
+    else if(info.sort>=100000) overdue48++;
+    else if(info.sort>=50000) warn24++;
+    else current++;
+  });
+  aoCallLog.forEach(c=>{ if(new Date(c.at)>=todayStart) today++; });
+  document.getElementById('ao-total').textContent=aoDrivers.length;
+  document.getElementById('ao-overdue48').textContent=overdue48;
+  document.getElementById('ao-warn24').textContent=warn24;
+  document.getElementById('ao-current').textContent=current;
+  document.getElementById('ao-never').textContent=never;
+  document.getElementById('ao-today').textContent=today;
+
+  // Recent history
+  const recent=aoCallLog.filter(c=>(Date.now()-new Date(c.at).getTime())<7*86400000).sort((a,b)=>new Date(b.at)-new Date(a.at));
+  const hBody=document.getElementById('ao-history-body');
+  if(!recent.length){
+    hBody.innerHTML='<tr class="empty-row"><td colspan="4">No call history yet.</td></tr>';
+  } else {
+    hBody.innerHTML=recent.slice(0,50).map(c=>`<tr>
+      <td>${new Date(c.at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}</td>
+      <td style="font-weight:600;">${c.driver}</td>
+      <td>${c.by}</td>
+      <td>${c.notes||'—'}</td>
+    </tr>`).join('');
+  }
+}
+
+function saveAODriver(){
+  const name=(document.getElementById('ao-drv-name').value||'').trim();
+  if(!name) return alert('Driver name is required.');
+  const carrier=document.getElementById('ao-drv-carrier').value;
+  if(aoDrivers.find(d=>d.name.toLowerCase()===name.toLowerCase())){
+    return alert('Driver "'+name+'" already exists in the roster.');
+  }
+  aoDrivers.push({id:crypto.randomUUID(),name,carrier,lastCallAt:null,lastCallBy:null});
+  saveAOData();
+  renderAssetOpsTable();
+  closeModal('modal-add-ao-driver');
+  document.getElementById('ao-drv-name').value='';
+}
+
+function importAODrivers(){
+  const text=(document.getElementById('ao-import-text').value||'').trim();
+  if(!text) return alert('Paste driver names first.');
+  const carrier=document.getElementById('ao-import-carrier').value;
+  const names=text.split('\n').map(s=>s.trim()).filter(Boolean);
+  let added=0;
+  names.forEach(name=>{
+    if(!aoDrivers.find(d=>d.name.toLowerCase()===name.toLowerCase())){
+      aoDrivers.push({id:crypto.randomUUID(),name,carrier,lastCallAt:null,lastCallBy:null});
+      added++;
+    }
+  });
+  saveAOData();
+  renderAssetOpsTable();
+  closeModal('modal-import-ao-drivers');
+  document.getElementById('ao-import-text').value='';
+  showToast('Import Complete',added+' drivers added, '+(names.length-added)+' duplicates skipped.','📋');
+}
+
+function openAOCallModal(id){
+  const d=aoDrivers.find(x=>x.id===id);
+  if(!d) return;
+  document.getElementById('ao-call-driver-id').value=id;
+  document.getElementById('ao-call-driver-label').textContent='📞 '+d.name;
+  document.getElementById('ao-call-datetime').value=new Date().toISOString().slice(0,16);
+  document.getElementById('ao-call-by').value='';
+  document.getElementById('ao-call-notes').value='';
+  openModal('modal-log-ao-call');
+}
+
+function saveAOCheckCall(){
+  const id=document.getElementById('ao-call-driver-id').value;
+  const by=(document.getElementById('ao-call-by').value||'').trim();
+  if(!by) return alert('Caller name is required.');
+  const dt=document.getElementById('ao-call-datetime').value;
+  const notes=(document.getElementById('ao-call-notes').value||'').trim();
+  const d=aoDrivers.find(x=>x.id===id);
+  if(!d) return;
+  const callAt=dt?new Date(dt).toISOString():new Date().toISOString();
+  d.lastCallAt=callAt;
+  d.lastCallBy=by;
+  aoCallLog.push({id:crypto.randomUUID(),driverId:id,driver:d.name,by,at:callAt,notes});
+  saveAOData();
+  renderAssetOpsTable();
+  closeModal('modal-log-ao-call');
+  showToast('Check Call Logged','Logged call for '+d.name+' by '+by,'✓');
+}
+
+function removeAODriver(id){
+  if(!confirm('Remove this driver from the roster?')) return;
+  aoDrivers=aoDrivers.filter(d=>d.id!==id);
+  saveAOData();
+  renderAssetOpsTable();
+}
+
+// ══════════════════════════════════════════════════════
+// MEMO LIBRARY — searchable memo repository
+// ══════════════════════════════════════════════════════
+let memos=JSON.parse(localStorage.getItem('fleet_memos')||'[]');
+
+function saveMemosData(){
+  localStorage.setItem('fleet_memos',JSON.stringify(memos));
+  try{
+    const snap=buildSharedSnapshot();
+    snap.memos=memos;
+    fetch(SHARED_STATE_API,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({state:snap,source:'web-client'})}).catch(()=>{});
+  }catch(_){}
+}
+
+function memoOverdueDays(memo){
+  if(!memo.lastSentAt) return memo.remindDays>0?999:0;
+  if(!memo.remindDays||memo.remindDays<=0) return 0;
+  const since=(Date.now()-new Date(memo.lastSentAt).getTime())/86400000;
+  return since>memo.remindDays? Math.floor(since):0;
+}
+
+function renderMemoLibrary(){
+  const search=(document.getElementById('memo-search').value||'').toLowerCase();
+  const filterCat=document.getElementById('memo-filter-cat').value;
+  const filterStatus=document.getElementById('memo-filter-status').value;
+
+  let filtered=memos.filter(m=>{
+    if(search && !m.title.toLowerCase().includes(search) && !m.content.toLowerCase().includes(search) && !(m.category||'').toLowerCase().includes(search)) return false;
+    if(filterCat!=='all' && m.category!==filterCat) return false;
+    if(filterStatus==='overdue' && memoOverdueDays(m)<=0) return false;
+    if(filterStatus==='recent' && (m.lastSentAt?((Date.now()-new Date(m.lastSentAt).getTime())/86400000>7):true)) return false;
+    if(filterStatus==='never' && m.lastSentAt) return false;
+    return true;
+  });
+
+  // Sort: overdue first, then by creation date
+  filtered.sort((a,b)=>{
+    const oa=memoOverdueDays(a), ob=memoOverdueDays(b);
+    if(oa!==ob) return ob-oa;
+    return new Date(b.createdAt)-new Date(a.createdAt);
+  });
+
+  const container=document.getElementById('memo-list-container');
+  if(!filtered.length){
+    container.innerHTML='<div style="font-family:\'Share Tech Mono\',monospace;font-size:16px;color:var(--text-muted);text-align:center;padding:30px;">'+(memos.length?'No memos match filters.':'No memos yet. Click "+ Create Memo" to add the first one.')+'</div>';
+  } else {
+    container.innerHTML=filtered.map(m=>{
+      const overdue=memoOverdueDays(m);
+      const lastSent=m.lastSentAt?new Date(m.lastSentAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'Never';
+      const created=new Date(m.createdAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+      const borderColor=overdue>0?'var(--accent-red)':m.lastSentAt?'var(--accent-green)':'var(--border-accent)';
+      const catColors={Weather:'#2980b9','Safety Alert':'#c0392b',Policy:'#8e44ad',Operational:'#e8a020','SOP Update':'#1a9e8c',Training:'#27ae60'};
+      return `<div class="card" style="border-left:3px solid ${borderColor};margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+          <div style="flex:1;">
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px;">
+              <span style="font-family:'Orbitron',monospace;font-size:17px;font-weight:600;color:var(--text-primary);">${m.title}</span>
+              <span class="badge" style="color:${catColors[m.category]||'var(--text-muted)'};border-color:${catColors[m.category]||'var(--text-muted)'};font-size:12px;">${m.category||'General'}</span>
+              ${overdue>0?'<span class="badge badge-red" style="font-size:12px;">⚠ OVERDUE '+Math.floor(overdue)+'d</span>':''}
+            </div>
+            <div style="font-size:16px;color:var(--text-secondary);line-height:1.5;margin-bottom:8px;white-space:pre-wrap;max-height:120px;overflow:hidden;">${m.content}</div>
+            <div style="display:flex;gap:16px;flex-wrap:wrap;font-family:'Share Tech Mono',monospace;font-size:13px;color:var(--text-muted);">
+              <span>Created: ${created}</span>
+              <span>By: ${m.author||'—'}</span>
+              <span style="color:${m.lastSentAt?'var(--accent-green)':'var(--accent-red)'};">Last Sent: ${lastSent}</span>
+              ${m.remindDays>0?'<span>Remind every '+m.remindDays+'d</span>':''}
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
+            <button class="btn-green btn-xs" onclick="markMemoSent('${m.id}')">✓ Mark Sent</button>
+            <button class="btn-blue btn-xs" onclick="copyMemoContent('${m.id}')">📋 Copy</button>
+            <button class="btn-danger btn-xs" onclick="removeMemo('${m.id}')">✕</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // KPIs
+  let overdue=0,sentWeek=0;
+  const weekAgo=Date.now()-7*86400000;
+  const cats=new Set();
+  memos.forEach(m=>{
+    cats.add(m.category||'General');
+    if(memoOverdueDays(m)>0) overdue++;
+    if(m.lastSentAt && new Date(m.lastSentAt).getTime()>weekAgo) sentWeek++;
+  });
+  document.getElementById('memo-total').textContent=memos.length;
+  document.getElementById('memo-overdue').textContent=overdue;
+  document.getElementById('memo-sentweek').textContent=sentWeek;
+  document.getElementById('memo-cats').textContent=cats.size;
+}
+
+function saveMemo(){
+  const title=(document.getElementById('memo-title').value||'').trim();
+  const content=(document.getElementById('memo-content').value||'').trim();
+  if(!title||!content) return alert('Title and content are required.');
+  const memo={
+    id:crypto.randomUUID(),
+    title,
+    content,
+    category:document.getElementById('memo-category').value,
+    author:(document.getElementById('memo-author').value||'').trim(),
+    remindDays:parseInt(document.getElementById('memo-remind-days').value)||15,
+    createdAt:new Date().toISOString(),
+    lastSentAt:null,
+    sendHistory:[]
+  };
+  memos.push(memo);
+  saveMemosData();
+  renderMemoLibrary();
+  closeModal('modal-new-memo');
+  document.getElementById('memo-title').value='';
+  document.getElementById('memo-content').value='';
+  document.getElementById('memo-author').value='';
+  showToast('Memo Created','\"'+title+'\" added to library.','📝');
+}
+
+function markMemoSent(id){
+  const m=memos.find(x=>x.id===id);
+  if(!m) return;
+  const now=new Date().toISOString();
+  m.lastSentAt=now;
+  if(!m.sendHistory) m.sendHistory=[];
+  m.sendHistory.push({at:now,by:'FST'});
+  saveMemosData();
+  renderMemoLibrary();
+  showToast('Memo Marked Sent','\"'+m.title+'\" distribution logged.','✓');
+}
+
+function copyMemoContent(id){
+  const m=memos.find(x=>x.id===id);
+  if(!m) return;
+  const text=m.title+'\n\n'+m.content;
+  navigator.clipboard.writeText(text).then(()=>{
+    showToast('Copied','Memo content copied to clipboard.','📋');
+  }).catch(()=>alert('Copy failed. Please select and copy manually.'));
+}
+
+function removeMemo(id){
+  if(!confirm('Delete this memo permanently?')) return;
+  memos=memos.filter(m=>m.id!==id);
+  saveMemosData();
+  renderMemoLibrary();
+}
+
+// ══════════════════════════════════════════════════════
+// TOAST HELPER (reuse existing if available)
+// ══════════════════════════════════════════════════════
+function showToast(title,msg,icon){
+  const container=document.getElementById('board-toast');
+  if(!container) return;
+  const el=document.createElement('div');
+  el.className='toast';
+  el.innerHTML=`<div class="toast-icon">${icon||'ℹ'}</div><div class="toast-body"><div class="toast-title">${title}</div><div class="toast-msg">${msg}</div></div><button class="toast-close" onclick="this.parentElement.remove()">✕</button>`;
+  container.appendChild(el);
+  setTimeout(()=>{el.classList.add('removing');setTimeout(()=>el.remove(),300);},4000);
+}
 
 </script>
 <!-- CASE DETAIL VIEW MODAL -->
@@ -2803,6 +3279,70 @@ document.addEventListener('DOMContentLoaded',()=>{
       <button class="btn-secondary" onclick="closeModal('modal-quick-task')">Cancel</button>
       <button class="btn-primary" onclick="saveQuickTask()">＋ Send to FST Tasks Required</button>
     </div>
+  </div>
+</div>
+
+<!-- ADD ASSET OPS DRIVER -->
+<div class="modal-overlay" id="modal-add-ao-driver">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header"><div class="modal-title">Add Driver to Roster</div><button class="modal-close" onclick="closeModal('modal-add-ao-driver')">✕</button></div>
+    <div class="form-grid">
+      <div><label>Driver Name <span style="color:var(--accent-red);">*</span></label><input type="text" id="ao-drv-name"></div>
+      <div><label>Carrier</label><select id="ao-drv-carrier"><option>AJG Transport</option><option>Gomez Haulers</option><option>AG4 Haulers</option><option>A Plus Three</option></select></div>
+    </div>
+    <div class="modal-actions"><button class="btn-secondary" onclick="closeModal('modal-add-ao-driver')">Cancel</button><button class="btn-primary" onclick="saveAODriver()">Add Driver</button></div>
+  </div>
+</div>
+
+<!-- IMPORT ASSET OPS ROSTER -->
+<div class="modal-overlay" id="modal-import-ao-drivers">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header"><div class="modal-title">Import Driver Roster</div><button class="modal-close" onclick="closeModal('modal-import-ao-drivers')">✕</button></div>
+    <div class="form-full">
+      <label>Paste driver names (one per line)</label>
+      <textarea id="ao-import-text" placeholder="John Smith&#10;Jane Doe&#10;Carlos Rivera" style="min-height:160px;"></textarea>
+    </div>
+    <div class="form-grid" style="margin-top:10px;">
+      <div><label>Default Carrier</label><select id="ao-import-carrier"><option>AJG Transport</option><option>Gomez Haulers</option><option>AG4 Haulers</option><option>A Plus Three</option></select></div>
+    </div>
+    <div class="modal-actions"><button class="btn-secondary" onclick="closeModal('modal-import-ao-drivers')">Cancel</button><button class="btn-primary" onclick="importAODrivers()">Import</button></div>
+  </div>
+</div>
+
+<!-- LOG ASSET OPS CHECK CALL -->
+<div class="modal-overlay" id="modal-log-ao-call">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header"><div class="modal-title">Log Check Call</div><button class="modal-close" onclick="closeModal('modal-log-ao-call')">✕</button></div>
+    <input type="hidden" id="ao-call-driver-id">
+    <div style="font-family:'Orbitron',monospace;font-size:18px;color:var(--accent-gold);margin-bottom:12px;" id="ao-call-driver-label"></div>
+    <div class="form-grid">
+      <div><label>Called By <span style="color:var(--accent-red);">*</span></label><input type="text" id="ao-call-by" placeholder="Your name"></div>
+      <div><label>Date/Time</label><input type="datetime-local" id="ao-call-datetime"></div>
+    </div>
+    <div class="form-full" style="margin-top:8px;"><label>Notes (optional)</label><textarea id="ao-call-notes" placeholder="Call summary, issues discussed..." style="min-height:60px;"></textarea></div>
+    <div class="modal-actions"><button class="btn-secondary" onclick="closeModal('modal-log-ao-call')">Cancel</button><button class="btn-primary" onclick="saveAOCheckCall()">Log Call</button></div>
+  </div>
+</div>
+
+<!-- CREATE MEMO -->
+<div class="modal-overlay" id="modal-new-memo">
+  <div class="modal" style="max-width:600px;">
+    <div class="modal-header"><div class="modal-title">Create New Memo</div><button class="modal-close" onclick="closeModal('modal-new-memo')">✕</button></div>
+    <div class="form-grid">
+      <div><label>Title <span style="color:var(--accent-red);">*</span></label><input type="text" id="memo-title" placeholder="Memo title"></div>
+      <div><label>Category</label>
+        <select id="memo-category">
+          <option>Weather</option><option>Safety Alert</option><option>Policy</option>
+          <option>Operational</option><option>SOP Update</option><option>Training</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-grid" style="margin-top:8px;">
+      <div><label>Created By</label><input type="text" id="memo-author" placeholder="Your name"></div>
+      <div><label>Recurring Reminder (days)</label><input type="number" id="memo-remind-days" value="15" min="0" placeholder="0 = no reminder"></div>
+    </div>
+    <div class="form-full" style="margin-top:8px;"><label>Memo Content <span style="color:var(--accent-red);">*</span></label><textarea id="memo-content" placeholder="Full memo text..." style="min-height:140px;"></textarea></div>
+    <div class="modal-actions"><button class="btn-secondary" onclick="closeModal('modal-new-memo')">Cancel</button><button class="btn-primary" onclick="saveMemo()">Save Memo</button></div>
   </div>
 </div>
 
