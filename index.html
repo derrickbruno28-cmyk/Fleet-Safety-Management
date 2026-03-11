@@ -1053,6 +1053,16 @@ const SHARED_STATE_API='/api/state';
 const LOCAL_STATE_BACKUP_KEY='fleet_safety_last_snapshot';
 let sharedSyncBusy=false;
 let lastSharedSig='';
+let deletedRecords={
+  incidents:{},
+  cases:{},
+  tcvRecords:{},
+  checkCalls:{},
+  trackerEntries:{},
+  boardPosts:{},
+  csaReports:{},
+  tasks:{}
+};
 
 function hashStr(s){
   let h=2166136261>>>0;
@@ -1091,6 +1101,52 @@ function mergeById(localArr,remoteArr,getKey){
   return [...map.values()];
 }
 
+function mergeDeletedMap(localDel,remoteDel){
+  return {...(remoteDel||{}),...(localDel||{})};
+}
+
+function applyDeletedMap(items,deletedMap,getKey){
+  const del=deletedMap||{};
+  return (items||[]).filter((it)=>{
+    const key=(it&&it.id)|| (getKey?getKey(it):'');
+    return key ? !del[key] : true;
+  });
+}
+
+function markDeleted(entity,id){
+  if(!entity||!id)return;
+  if(!deletedRecords[entity])deletedRecords[entity]={};
+  deletedRecords[entity][id]=Date.now();
+}
+
+function incidentRank(rec){
+  if(!rec)return 0;
+  let score=0;
+  if(rec.date)score+=2;
+  if(rec.ref && rec.ref!=='—' && rec.ref!=='Not Provided')score+=1;
+  if(rec.media&&rec.media.length)score+=3;
+  if(rec.status==='→ Discipline')score+=4;
+  if(rec.summary)score+=Math.min(3,Math.ceil(String(rec.summary).length/120));
+  return score;
+}
+
+function dedupeIncidents(records){
+  const out=new Map();
+  (records||[]).forEach((r)=>{
+    const fp=[
+      String(r.driver||'').trim().toLowerCase(),
+      String(r.carrier||'').trim().toLowerCase(),
+      String(r.type||'').trim().toLowerCase(),
+      String(r.summary||'').trim().toLowerCase(),
+      String(r.ref||'').trim().toLowerCase()
+    ].join('|');
+    if(!fp.replace(/\|/g,''))return;
+    const prev=out.get(fp);
+    if(!prev || incidentRank(r)>=incidentRank(prev)) out.set(fp,r);
+  });
+  return [...out.values()];
+}
+
 function buildTaskSnapshot(){
   return Object.values(taskRegistry||{}).map(t=>({
     id:t.id,text:t.text,freq:t.freq,assign:t.assign,timeframe:t.timeframe,followup:t.followup||'',reason:t.reason||'',
@@ -1103,7 +1159,8 @@ function buildSharedSnapshot(){
   ensureRecordIds();
   return {
     incidents,cases,tcvRecords,checkCalls,trackerEntries,boardPosts,csaReports,
-    tasks:buildTaskSnapshot()
+    tasks:buildTaskSnapshot(),
+    deleted:deletedRecords
   };
 }
 
@@ -1139,6 +1196,16 @@ function restoreTasksFromSnapshot(tasks){
 
 function applySharedSnapshot(snap){
   if(!snap||typeof snap!=='object')return;
+  deletedRecords={
+    incidents:{...((snap.deleted&&snap.deleted.incidents)||{})},
+    cases:{...((snap.deleted&&snap.deleted.cases)||{})},
+    tcvRecords:{...((snap.deleted&&snap.deleted.tcvRecords)||{})},
+    checkCalls:{...((snap.deleted&&snap.deleted.checkCalls)||{})},
+    trackerEntries:{...((snap.deleted&&snap.deleted.trackerEntries)||{})},
+    boardPosts:{...((snap.deleted&&snap.deleted.boardPosts)||{})},
+    csaReports:{...((snap.deleted&&snap.deleted.csaReports)||{})},
+    tasks:{...((snap.deleted&&snap.deleted.tasks)||{})}
+  };
   incidents=Array.isArray(snap.incidents)?snap.incidents:[];
   cases=Array.isArray(snap.cases)?snap.cases:[];
   tcvRecords=Array.isArray(snap.tcvRecords)?snap.tcvRecords:[];
@@ -1146,6 +1213,13 @@ function applySharedSnapshot(snap){
   trackerEntries=Array.isArray(snap.trackerEntries)?snap.trackerEntries:[];
   boardPosts=Array.isArray(snap.boardPosts)?snap.boardPosts:[];
   csaReports=Array.isArray(snap.csaReports)?snap.csaReports:[];
+  incidents=dedupeIncidents(applyDeletedMap(incidents,deletedRecords.incidents,(r)=>makeId('inc',[r.date,r.driver,r.type,r.summary,r.ref].join('|'))));
+  cases=applyDeletedMap(cases,deletedRecords.cases,(r)=>makeId('case',[(r.casenum||''),(r.driver||''),(r.incidentDate||''),(r.description||'')].join('|')));
+  tcvRecords=applyDeletedMap(tcvRecords,deletedRecords.tcvRecords,(r)=>makeId('tcv',[r.date,r.driver,r.type,r.details].join('|')));
+  checkCalls=applyDeletedMap(checkCalls,deletedRecords.checkCalls,(r)=>makeId('call',[r.date,r.driver,r.exec,r.situation].join('|')));
+  trackerEntries=applyDeletedMap(trackerEntries,deletedRecords.trackerEntries,(r)=>makeId('trk',[r.driver,r.type,r.notes,r.dateAdded].join('|')));
+  boardPosts=applyDeletedMap(boardPosts,deletedRecords.boardPosts,(r)=>r.id||makeId('post',[r.author,r.subject,r.message,r.timestamp].join('|')));
+  csaReports=applyDeletedMap(csaReports,deletedRecords.csaReports,(r)=>makeId('csa',[r.company,r.date,r.score].join('|')));
   restoreTasksFromSnapshot(Array.isArray(snap.tasks)?snap.tasks:[]);
   recalcIncMap();
   renderIncidentLog();updateOvStats();renderDiscipline();renderTCV();renderCheckCalls();renderTracker();renderBoard();renderCSAHistory();updateCSASummary();updateCSAChart();
@@ -1162,15 +1236,27 @@ function mergeSnapshots(localSnap,remoteSnap){
     csaReports:(r)=>makeId('csa',[r.company,r.date,r.score].join('|')),
     tasks:(r)=>r.id||makeId('task',[r.group,r.text,r.driver,r.followup].join('|')),
   };
+  const mergedDeleted={
+    incidents:mergeDeletedMap(localSnap.deleted&&localSnap.deleted.incidents,remoteSnap.deleted&&remoteSnap.deleted.incidents),
+    cases:mergeDeletedMap(localSnap.deleted&&localSnap.deleted.cases,remoteSnap.deleted&&remoteSnap.deleted.cases),
+    tcvRecords:mergeDeletedMap(localSnap.deleted&&localSnap.deleted.tcvRecords,remoteSnap.deleted&&remoteSnap.deleted.tcvRecords),
+    checkCalls:mergeDeletedMap(localSnap.deleted&&localSnap.deleted.checkCalls,remoteSnap.deleted&&remoteSnap.deleted.checkCalls),
+    trackerEntries:mergeDeletedMap(localSnap.deleted&&localSnap.deleted.trackerEntries,remoteSnap.deleted&&remoteSnap.deleted.trackerEntries),
+    boardPosts:mergeDeletedMap(localSnap.deleted&&localSnap.deleted.boardPosts,remoteSnap.deleted&&remoteSnap.deleted.boardPosts),
+    csaReports:mergeDeletedMap(localSnap.deleted&&localSnap.deleted.csaReports,remoteSnap.deleted&&remoteSnap.deleted.csaReports),
+    tasks:mergeDeletedMap(localSnap.deleted&&localSnap.deleted.tasks,remoteSnap.deleted&&remoteSnap.deleted.tasks),
+  };
+  const mergedIncidents=applyDeletedMap(mergeById(localSnap.incidents,remoteSnap.incidents,keyFns.incidents),mergedDeleted.incidents,keyFns.incidents);
   return {
-    incidents:mergeById(localSnap.incidents,remoteSnap.incidents,keyFns.incidents),
-    cases:mergeById(localSnap.cases,remoteSnap.cases,keyFns.cases),
-    tcvRecords:mergeById(localSnap.tcvRecords,remoteSnap.tcvRecords,keyFns.tcvRecords),
-    checkCalls:mergeById(localSnap.checkCalls,remoteSnap.checkCalls,keyFns.checkCalls),
-    trackerEntries:mergeById(localSnap.trackerEntries,remoteSnap.trackerEntries,keyFns.trackerEntries),
-    boardPosts:mergeById(localSnap.boardPosts,remoteSnap.boardPosts,keyFns.boardPosts),
-    csaReports:mergeById(localSnap.csaReports,remoteSnap.csaReports,keyFns.csaReports),
-    tasks:mergeById(localSnap.tasks,remoteSnap.tasks,keyFns.tasks),
+    incidents:dedupeIncidents(mergedIncidents),
+    cases:applyDeletedMap(mergeById(localSnap.cases,remoteSnap.cases,keyFns.cases),mergedDeleted.cases,keyFns.cases),
+    tcvRecords:applyDeletedMap(mergeById(localSnap.tcvRecords,remoteSnap.tcvRecords,keyFns.tcvRecords),mergedDeleted.tcvRecords,keyFns.tcvRecords),
+    checkCalls:applyDeletedMap(mergeById(localSnap.checkCalls,remoteSnap.checkCalls,keyFns.checkCalls),mergedDeleted.checkCalls,keyFns.checkCalls),
+    trackerEntries:applyDeletedMap(mergeById(localSnap.trackerEntries,remoteSnap.trackerEntries,keyFns.trackerEntries),mergedDeleted.trackerEntries,keyFns.trackerEntries),
+    boardPosts:applyDeletedMap(mergeById(localSnap.boardPosts,remoteSnap.boardPosts,keyFns.boardPosts),mergedDeleted.boardPosts,keyFns.boardPosts),
+    csaReports:applyDeletedMap(mergeById(localSnap.csaReports,remoteSnap.csaReports,keyFns.csaReports),mergedDeleted.csaReports,keyFns.csaReports),
+    tasks:applyDeletedMap(mergeById(localSnap.tasks,remoteSnap.tasks,keyFns.tasks),mergedDeleted.tasks,keyFns.tasks),
+    deleted:mergedDeleted,
   };
 }
 
@@ -1625,11 +1711,15 @@ function renderIncidentLog(){
 }
 function deleteIncident(i){
   const rec=incidents[i];
+  if(rec){
+    if(!rec.id)rec.id=makeId('inc',[rec.date,rec.driver,rec.type,rec.summary,rec.ref].join('|'));
+    markDeleted('incidents',rec.id);
+  }
   if(rec&&Array.isArray(rec.media))rec.media.forEach(m=>{
     if(m&&m.mediaId)fetch(`/api/media/${m.mediaId}`,{method:'DELETE'}).catch(()=>{});
     if(m&&m.url&&String(m.url).startsWith('blob:'))URL.revokeObjectURL(m.url);
   });
-  incidents.splice(i,1);renderIncidentLog();updateOvStats();
+  incidents.splice(i,1);renderIncidentLog();updateOvStats();pushSharedState();
 }
 function openIncToDisc(i){
   document.getElementById('itd-idx').value=i;
@@ -1705,7 +1795,14 @@ function executeMoveCase(){
   cases[i].movedDate=new Date().toLocaleDateString();
   renderDiscipline();updateOvStats();closeModal('modal-move-case');
 }
-function deleteCase(i){cases.splice(i,1);renderDiscipline();updateOvStats();}
+function deleteCase(i){
+  const rec=cases[i];
+  if(rec){
+    if(!rec.id)rec.id=makeId('case',[(rec.casenum||''),(rec.driver||''),(rec.incidentDate||''),(rec.description||'')].join('|'));
+    markDeleted('cases',rec.id);
+  }
+  cases.splice(i,1);renderDiscipline();updateOvStats();pushSharedState();
+}
 function toggleDiscSection(name){
   const b=document.getElementById('disc-body-'+name);
   b.style.display=b.style.display==='none'?'':'none';
@@ -1798,7 +1895,14 @@ function renderTCV(){
     <td><button class="btn-danger btn-sm" onclick="deleteTCV(${i})">Remove</button></td>
   </tr>`).join('');
 }
-function deleteTCV(i){tcvRecords.splice(i,1);renderTCV();}
+function deleteTCV(i){
+  const rec=tcvRecords[i];
+  if(rec){
+    if(!rec.id)rec.id=makeId('tcv',[rec.date,rec.driver,rec.type,rec.details].join('|'));
+    markDeleted('tcvRecords',rec.id);
+  }
+  tcvRecords.splice(i,1);renderTCV();pushSharedState();
+}
 
 // ── CHECK CALLS ──
 let checkCalls=[];
@@ -1855,7 +1959,14 @@ function renderCheckCalls(){
   document.getElementById('cc-suspension').textContent=checkCalls.filter(c=>c.susp==='Yes').length;
   document.getElementById('cc-positive').textContent=checkCalls.filter(c=>c.attitude.includes('Understanding')).length;
 }
-function deleteCall(i){checkCalls.splice(i,1);renderCheckCalls();}
+function deleteCall(i){
+  const rec=checkCalls[i];
+  if(rec){
+    if(!rec.id)rec.id=makeId('call',[rec.date,rec.driver,rec.exec,rec.situation].join('|'));
+    markDeleted('checkCalls',rec.id);
+  }
+  checkCalls.splice(i,1);renderCheckCalls();pushSharedState();
+}
 
 // ── TRACKER ──
 let trackerEntries=[];
@@ -1888,7 +1999,14 @@ function renderTracker(){
   </tr>`).join(''):'<tr class="empty-row"><td colspan="7">No calls in queue.</td></tr>';
 }
 function markDoneTracker(i){trackerEntries[i].status='Completed';renderTracker();}
-function deleteTracker(i){trackerEntries.splice(i,1);renderTracker();}
+function deleteTracker(i){
+  const rec=trackerEntries[i];
+  if(rec){
+    if(!rec.id)rec.id=makeId('trk',[rec.driver,rec.type,rec.notes,rec.dateAdded].join('|'));
+    markDeleted('trackerEntries',rec.id);
+  }
+  trackerEntries.splice(i,1);renderTracker();pushSharedState();
+}
 
 // ── VIDEOS ──
 let vidCount=10;
@@ -2394,7 +2512,10 @@ function submitReply(id){
   showBoardToast(post,true,author);
 }
 function togglePin(id){const post=boardPosts.find(p=>p.id===id);if(post)post.pinned=!post.pinned;renderBoard();}
-function deletePost(id){boardPosts=boardPosts.filter(p=>p.id!==id);renderBoard();}
+function deletePost(id){
+  if(id)markDeleted('boardPosts',id);
+  boardPosts=boardPosts.filter(p=>p.id!==id);renderBoard();pushSharedState();
+}
 
 let csaReports=[];
 const CSA_CARRIERS={ajg:'AJG Transport',gomez:'Gomez Haulers',ag4:'AG4 Haulers',aplus:'A Plus Three'};
@@ -2470,7 +2591,14 @@ function renderCSAHistory(){
   }).join('');
 }
 
-function deleteCSAReport(i){csaReports.splice(i,1);renderCSAHistory();updateCSASummary();updateCSAChart();}
+function deleteCSAReport(i){
+  const rec=csaReports[i];
+  if(rec){
+    if(!rec.id)rec.id=makeId('csa',[rec.company,rec.date,rec.score].join('|'));
+    markDeleted('csaReports',rec.id);
+  }
+  csaReports.splice(i,1);renderCSAHistory();updateCSASummary();updateCSAChart();pushSharedState();
+}
 
 function updateCSAChart(){
   const allDates=[...new Set(csaReports.map(r=>r.date))].sort().slice(-6);
